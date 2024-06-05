@@ -4,16 +4,16 @@ from .data_structures import ModelInfo
 
 INITIAL_PEERS = PUBLIC_INITIAL_PEERS
 
-# MODEL = ModelInfo(
-#     dht_prefix="StableBeluga2-hf",
-#     repository="https://huggingface.co/petals-team/StableBeluga2",
-#     num_blocks=80,
-# )
 MODEL = ModelInfo(
-    dht_prefix="bigscience/bloom-560m-petals",
-    repository="https://huggingface.co/bigscience/bloom-560m",
-    num_blocks=24,
+    dht_prefix="StableBeluga2-hf",
+    repository="https://huggingface.co/petals-team/StableBeluga2",
+    num_blocks=80,
 )
+# MODEL = ModelInfo(
+#     dht_prefix="bigscience/bloom-560m-petals",
+#     repository="https://huggingface.co/bigscience/bloom-560m",
+#     num_blocks=24,
+# )
 
 MODELS = [
     ModelInfo(
