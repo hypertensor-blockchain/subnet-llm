@@ -5,7 +5,7 @@ Make sure to update `.env` variables
 
 run python -m petals.cli.run_update_network_config before run_server
 
-python -m petals.cli.run_add_model_peer --stake_to_be_added 1000000000000000000000
+python -m petals_tensor.cli.run_add_model_peer --stake_to_be_added 1000000000000000000000
 """
 import logging
 import argparse
