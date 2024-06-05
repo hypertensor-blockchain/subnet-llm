@@ -21,8 +21,8 @@ from humanfriendly import parse_size
 
 from petals_tensor.constants import DTYPE_MAP, PUBLIC_INITIAL_PEERS
 from petals_tensor.server.server import Server
-from petals.substrate import config as substrate_config
-from petals.substrate.chain_functions import get_balance, get_min_stake_balance, get_model_accounts, get_model_data, get_model_path_id
+from petals_tensor.substrate import config as substrate_config
+from petals_tensor.substrate.chain_functions import get_balance, get_min_stake_balance, get_model_accounts, get_model_data, get_model_path_id
 from petals_tensor.utils.convert_block import QuantType
 from petals_tensor.utils.version import validate_version
 

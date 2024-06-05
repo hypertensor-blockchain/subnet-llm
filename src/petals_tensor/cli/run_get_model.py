@@ -3,7 +3,7 @@ Return peer data stored in the substrate config
 
 Note: In dev mode the blockchain must be running
 
-python -m petals.cli.run_get_model
+python -m petals_tensor.cli.run_get_model
 """
 import logging
 from petals_tensor.substrate import config as substrate_config

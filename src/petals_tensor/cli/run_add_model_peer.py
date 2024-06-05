@@ -3,7 +3,7 @@ This should be ran after your node has successfully began hosting the machine le
 
 Make sure to update `.env` variables
 
-run python -m petals.cli.run_update_network_config before run_server
+run python -m petals_tensor.cli.run_update_network_config before run_server
 
 python -m petals_tensor.cli.run_add_model_peer --stake_to_be_added 1000000000000000000000
 """

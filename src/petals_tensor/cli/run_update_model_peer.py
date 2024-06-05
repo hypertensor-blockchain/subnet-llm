@@ -3,9 +3,9 @@ This should be ran after your node has successfully began hosting the machine le
 
 Make sure to update `.env` variables
 
-run python -m petals.cli.run_update_network_config before run_server
+run python -m petals_tensor.cli.run_update_network_config before run_server
 
-python3 -m petals.cli.run_update_model_peer
+python3 -m petals_tensor.cli.run_update_model_peer
 """
 import logging
 import argparse

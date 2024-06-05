@@ -1,6 +1,6 @@
 """
 If a model is successfully voted in use this cli
-python -m petals.cli.run_add_model --path petals-team/Beluga2
+python -m petals_tensor.cli.run_add_model --path petals-team/Beluga2
 
 """
 import logging

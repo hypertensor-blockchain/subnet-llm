@@ -6,7 +6,7 @@ This script may be used for launching lightweight CPU machines serving as bootst
 
 This may be eventually merged to the hivemind upstream.
 
-python -m petals.cli.run_dht
+python -m petals_tensor.cli.run_dht
 """
 
 import argparse

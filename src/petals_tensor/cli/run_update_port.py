@@ -6,7 +6,7 @@ Before running add_model_peer() make sure your peer_id is shown when running `he
 It's important other peers are submitting your peer_id during peer consensus so the node 
 doesn't increment your peer_id out of consensus. Read documentation for more information
 
-python -m petals.cli.run_add_model_peer --id 1 --peer_id 12D3KooWGFuUunX1AzAzjs3CgyqTXtPWX3AqRhJFbesGPGYHJQTP --ip 127.0.0.1 --port 8888 --stake_to_be_added 1000
+python -m petals_tensor.cli.run_add_model_peer --id 1 --peer_id 12D3KooWGFuUunX1AzAzjs3CgyqTXtPWX3AqRhJFbesGPGYHJQTP --ip 127.0.0.1 --port 8888 --stake_to_be_added 1000
 
 """
 import logging
@@ -15,7 +15,6 @@ from petals_tensor.health.state_updater import get_peer_ids_list
 from petals_tensor.substrate import config as substrate_config
 import re
 from petals_tensor.substrate.chain_functions import add_model_peer, get_balance, update_port
-# from petals.substrate.utils import get_eligible_consensus_block
 from petals_tensor.substrate import utils as substrate_utils
 
 logger = logging.getLogger(__name__)

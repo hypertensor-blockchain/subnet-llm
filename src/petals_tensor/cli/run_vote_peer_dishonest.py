@@ -3,7 +3,7 @@ Vote a model peer as dishonest manually
 
 Note: In dev mode the blockchain must be running
 
-python -m petals.cli.run_vote_peer_dishonest
+python -m petals_tensor.cli.run_vote_peer_dishonest
 """
 import argparse
 import logging
