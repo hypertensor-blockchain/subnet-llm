@@ -7,7 +7,7 @@
 <p align="center">
     Subnet 1 - the first installment of Hypertensor subnets.<br>
     Run large language models at home, BitTorrent-style.<br>
-    Fine-tuning and inference <a href="https://github.com/hypertensor-blockchain/petals-tensor#benchmarks">up to 10x faster</a> than offloading
+    Fine-tuning and inference <a href="https://github.com/hypertensor-blockchain/petals_tensor#benchmarks">up to 10x faster</a> than offloading
     <br><br>
     <br>
 </p>
@@ -62,7 +62,7 @@ PHRASE="<mnemonic>"
 
 **Update RPC**:
 
-In ```petals/substrate/config.py``` update the ```DEV_URL``` with a live RPC IP and port:
+In ```petals_tensor/substrate/config.py``` update the ```DEV_URL``` with a live RPC IP and port:
 
 If the RPC isn't correct you will likely receive a ```ConnectionRefusedError: [Errno 111] Connection refused``` error.
 
@@ -78,7 +78,7 @@ Before running your server, ensure your account has enough balance for the requi
 Get your public IP for ```--public_ip```, use the port you have open specifically for Petals Tensor for ```--port```, and use the port the blockchain will call for testing your peer for ```--tcp_port```.
 
 ```bash
-python -m petals.cli.run_server bigscience/bloom-560m --public_ip 127.000.000.000 --port 31337 --tcp_port 8888
+python -m petals_tensor.cli.run_server petals-team/StableBeluga2 --public_ip 127.000.000.000 --port 31337 --tcp_port 8888
 ```
 <hr>
 
