@@ -3,8 +3,8 @@ Make sure to update `.env` variables
 run run_update_network_config before run_server
 
 * decentrally and manually announce port and ip to other peers
-python -m petals.cli.run_server petals-team/StableBeluga2 --public_ip [ip] --port [port] --tcp_port [tcp_port]
-python -m petals.cli.run_server bigscience/bloom-560m --public_ip [ip] --port [port] --tcp_port [tcp_port]
+python -m petals_tensor.cli.run_server petals-team/StableBeluga2 --public_ip [ip] --port [port] --tcp_port [tcp_port]
+python -m petals_tensor.cli.run_server bigscience/bloom-560m --public_ip [ip] --port [port] --tcp_port [tcp_port]
 
 """
 import os
