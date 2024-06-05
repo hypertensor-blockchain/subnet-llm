@@ -75,10 +75,10 @@ DEV_URL = "ws://127.000.000.000:9945"
 
 Before running your server, ensure your account has enough balance for the required minimum stake.
 
-Get your public IP for ```--public_ip```, use the port you have open specifically for Petals Tensor for ```--port```, and use the port the blockchain will call for testing your peer for ```--tcp_port```.
+Use the port you have open specifically for Petals Tensor for ```--port```, and use the port the blockchain will call for testing your peer for ```--tcp_port```.
 
 ```bash
-python -m petals_tensor.cli.run_server petals-team/StableBeluga2 --public_ip 127.0.0.1 --port 31337 --tcp_public_ip <your-ip-address> --tcp_port 8888
+python -m petals_tensor.cli.run_server petals-team/StableBeluga2 --port 31337 --tcp_port 8888
 ```
 
 <hr>
