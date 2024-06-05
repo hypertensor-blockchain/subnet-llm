@@ -12,16 +12,11 @@ import torch
 #     "/ip4/159.203.156.48/tcp/31338/p2p/QmQGTqmM7NKjV6ggU1ZCap8zWiyKR89RViDXiqehSiCpY5",
 # ] 
 
-# PUBLIC_INITIAL_PEERS = [
-#     "/ip4/18.118.105.117/tcp/31330/p2p/12D3KooWEsgrFiS8Kr2tLBkBzAKRQjRJfz7urjBRoXSrJ99QoWPq",
-#     "/ip4/18.118.105.117/udp/31330/quic/p2p/12D3KooWEsgrFiS8Kr2tLBkBzAKRQjRJfz7urjBRoXSrJ99QoWPq"
-# ]
-
 PUBLIC_INITIAL_PEERS = [
-    "/ip4/170.250.110.241/tcp/31330/p2p/12D3KooWAYAAtfNx8Pg8DX1UL5P1na2QWzyzSYMS7TD7NuidhMCK", 
-    "/ip4/170.250.110.241/udp/31330/quic/p2p/12D3KooWAYAAtfNx8Pg8DX1UL5P1na2QWzyzSYMS7TD7NuidhMCK"
+    '/ip4/18.216.34.150/tcp/31330/p2p/12D3KooWBxMLje7yExEBhZQqbuVL1giKPpN8DieYkL3Wz7sTku7T', 
+    '/ip4/18.216.34.150/udp/31330/quic/p2p/12D3KooWBxMLje7yExEBhZQqbuVL1giKPpN8DieYkL3Wz7sTku7T',
+    '/ip4/18.220.20.114/tcp/31330/p2p/12D3KooWEDYmpQVW6ixD7MijciZcZMuPtdrvNbeC4Jr1cxV1hJZe',
 ]
-
 
 # The reachability API is currently used only when connecting to the public swarm
 # REACHABILITY_API_URL = "https://health.petals.dev"
