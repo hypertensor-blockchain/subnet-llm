@@ -16,12 +16,12 @@ load_dotenv(os.path.join(Path.cwd(), '.env'))
 PHRASE = os.getenv('PHRASE')
 
 # local
-LOCAL_URL = "ws://127.0.0.1:9944"
+LOCAL_URL = os.getenv('LOCAL_RPC')
 # development
 """Enter a valid URL and port of a RPC node"""
-DEV_URL = "ws://3.16.197.70:9945"
+DEV_URL = os.getenv('DEV_RPC')
 # live
-LIVE_URL = "ws://"
+LIVE_URL = os.getenv('LIVE_RPC')
 
 # s per block
 BLOCK_SECS = 6
