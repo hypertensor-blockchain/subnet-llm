@@ -63,7 +63,7 @@ def main():
                             'This is a simplified way to set the --announce_maddrs option (see below).'
                             'Default: server announces IPv4/IPv6 addresses of your network interfaces')
 
-    parser.add_argument('--tcp_public_ip', type=str, required=True,
+    parser.add_argument('--tcp_public_ip', type=str, required=False,
                         help='Your public IPv4 address, which is visible from the Internet. '
                              'This is a simplified way to set the --announce_maddrs option (see below).'
                              'This is also called by the blockchains offchain-worker alongside your port to ensure your server is returning valid data.'

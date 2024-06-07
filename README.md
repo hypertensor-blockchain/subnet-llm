@@ -55,17 +55,17 @@ python -m pip install .
 
 **Update .env**:
 
-Create an ```.env``` file in the root folder and add your seed phrase as:
+Copy the ```.env.example``` file, rename it to ```.env``` in the root directory, and insert your seed phrase:
+
 ```bash
 PHRASE="<mnemonic>"
 ```
 
 **Update RPC**:
 
-In ```petals_tensor/substrate/config.py``` update the ```DEV_URL``` with a live RPC IP and port:
+In ```.env```, update the ```DEV_URL``` with a live RPC IP and port:
 
 If the RPC isn't correct you will likely receive a ```ConnectionRefusedError: [Errno 111] Connection refused``` error.
-
 
 ```bash
 DEV_URL = "ws://127.000.000.000:9945"
@@ -75,11 +75,20 @@ DEV_URL = "ws://127.000.000.000:9945"
 
 Before running your server, ensure your account has enough balance for the required minimum stake.
 
-Get your public IP for ```--public_ip```, use the port you have open specifically for Petals Tensor for ```--port```, and use the port the blockchain will call for testing your peer for ```--tcp_port```.
+Use the port you have open specifically for Petals Tensor for ```--port```, and use the port the blockchain will call for testing your peer for ```--tcp_port```.
 
 ```bash
-python -m petals_tensor.cli.run_server petals-team/StableBeluga2 --public_ip 127.000.000.000 --port 31337 --tcp_port 8888
+python -m petals_tensor.cli.run_server [model_path] --public_ip [public_ip] --port [port] --tcp_public_ip [tcp_public_ip] --tcp_port [tcp_port]
 ```
+
+**Arguments**:
+
+--`model_path`: The HuggingFace model path.
+--`public_ip`: The public IP of the server for other peers to connect to.
+--`port`: The port of the server for other peers to connect to.
+--`tcp_public_ip`: The IP for the blockchain to call.
+--`tcp_port`: The port for the blockchain to call.
+
 <hr>
 
 **Socials**:
@@ -90,9 +99,7 @@ Message us!
 
 🐦 Twitter: [our Twitter](https://twitter.com/hyper_tensor)!
 
-
-## The following is the original Petals documentation. Much of this will still apply but refer to the documentation here: https://docs.hypertensor.org
-
+## The following is the original Petals documentation. Much of this will still apply but refer to the documentation here: <https://docs.hypertensor.org>
 
 ## Connect your GPU and increase Petals capacity
 
