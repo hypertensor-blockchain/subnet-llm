@@ -84,9 +84,13 @@ python -m petals_tensor.cli.run_server [model_path] --public_ip [public_ip] --po
 **Arguments**:
 
 --`model_path`: The HuggingFace model path.
+
 --`public_ip`: The public IP of the server for other peers to connect to.
+
 --`port`: The port of the server for other peers to connect to.
+
 --`tcp_public_ip`: The IP for the blockchain to call.
+
 --`tcp_port`: The port for the blockchain to call.
 
 <hr>
