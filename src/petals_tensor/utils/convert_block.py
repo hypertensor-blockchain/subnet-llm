@@ -17,6 +17,9 @@ logger = get_logger(__name__)
 
 
 class QuantType(Enum):
+    """
+    Enum for different types of quantization
+    """
     NONE = 0
     INT8 = 1  # 8-bit as in the LLM.int8() paper
     NF4 = 2  # 4-bit as in the QLoRA paper
@@ -74,6 +77,14 @@ def convert_block(
 
 
 def quantize_module(model: nn.Module, *, quant_type: QuantType) -> nn.Module:
+    """
+    Convert a transformer block to use quantized weights and activations
+
+    :param model: a transformer block
+    :param quant_type: quantization type
+    :return: a quantized version of the model
+    """
+
     # Import bitsandbytes only when necessary, so Petals runs on platforms not supported by bitsandbytes
     import bitsandbytes as bnb
 
@@ -118,6 +129,16 @@ def quantize_module(model: nn.Module, *, quant_type: QuantType) -> nn.Module:
 def make_tensor_parallel(
     block: nn.Module, model_config: PretrainedConfig, devices: Sequence[torch.device], output_device: torch.device
 ) -> nn.Module:
+    """
+    Apply tensor parallelism to a transformer block
+
+    :param block: a single transformer block, either pre-trained or newly initialized
+    :param model_config: HF transformers config for the full model
+    :param devices: a list of devices to split the model between
+    :param output_device: if tensor_parallel_devices is True, output
+    :return: a module that acts like the original block, but runs with tensor parallelism
+    """
+    
     if model_config.model_type == "bloom":
         tp_config = get_bloom_config(model_config, devices)
         del tp_config.state_rules[re.compile(".*word_embeddings.weight$")]
@@ -136,6 +157,12 @@ def make_tensor_parallel(
 
 
 def check_device_balance(devices: Sequence[torch.device]):
+    """
+    Check if the devices have similar memory and compute capabilities to the best of our ability
+
+    :param devices: a list of devices to split the model between (e.g. GPUs)
+    """
+
     if not all(device.type == "cuda" for device in devices):
         logger.warning("Running tensor parallelism on non-GPU devices; proceed at your own risk")
         return

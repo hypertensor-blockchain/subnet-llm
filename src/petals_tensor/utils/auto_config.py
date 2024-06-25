@@ -22,6 +22,14 @@ _CLASS_MAPPING = {}  # Populated by petals.models.* subpackages with register_mo
 
 
 def register_model_classes(*, config: Type[PretrainedConfig], **kwargs):
+    """
+    Register a model class for a given config type.
+    This function should be called in petals.models.* subpackages.
+
+    :param config: a config class for the model
+    :param kwargs: model classes to register for the given config
+    """
+
     assert issubclass(config, PretrainedConfig)
     assert config.model_type not in _CLASS_MAPPING, f"Model type {config.model_type} is already registered"
 
@@ -33,6 +41,16 @@ class _AutoDistributedBase:
 
     @classmethod
     def from_pretrained(cls, model_name_or_path: Union[str, os.PathLike, None], *args, **kwargs) -> PretrainedConfig:
+        """
+        Load a model or config from a pretrained model name or path.
+        If the model type is not supported by Petals, raise a ValueError.
+
+        :param model_name_or_path: a model identifier or path to a directory containing a config file
+        :param args: additional positional arguments to pass to the model's `from_pretrained` method
+        :param kwargs: additional keyword arguments to pass to the model's `from_pretrained` method
+        :return: a model or config instance
+        """
+
         if (
             always_needs_auth(model_name_or_path)
             and kwargs.get("token") is None
@@ -72,6 +90,9 @@ class DefaultRevisionMixin:
     def from_pretrained(
         cls, model_name_or_path: Union[str, os.PathLike, None], *args, revision: Optional[str] = None, **kwargs
     ):
+        """
+        Load a model or config from a pretrained model name or path.
+        """
         if revision is None and model_name_or_path in cls.DEFAULT_REVISIONS:
             revision = cls.DEFAULT_REVISIONS[model_name_or_path]
             logger.info(f"Loading {model_name_or_path}, revision {revision}")

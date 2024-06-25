@@ -12,6 +12,9 @@ logger = get_logger(__name__)
 
 
 def validate_version() -> None:
+    """
+    Checks if the current Petals version is the latest one
+    """
     logger.info(f"Running {TextStyle.BOLD}Petals {petals_tensor.__version__}{TextStyle.RESET}")
     try:
         r = requests.get("https://pypi.python.org/pypi/petals/json")
@@ -31,6 +34,11 @@ def validate_version() -> None:
 
 
 def get_compatible_model_repo(model_name_or_path: Union[str, os.PathLike, None]) -> Union[str, os.PathLike, None]:
+    """
+    Returns the original model repo name if the model is incompatible with Petals 1.2.0+
+    Args:
+        model_name_or_path: a model name or path
+    """
     if model_name_or_path is None:
         return None
 

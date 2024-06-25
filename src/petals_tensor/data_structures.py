@@ -12,6 +12,11 @@ CHAIN_DELIMITER = " "  # delimits multiple uids in a sequence, e.g. "bloom.layer
 
 
 def parse_uid(uid: ModuleUID) -> Tuple[str, int]:
+    """
+    Parse a module UID into a DHT prefix and an integer index
+    Args:
+        uid: a module UID to parse into a DHT prefix and an integer index (e.g. "bloom.transformer.h.4.self_attention")
+    """
     assert CHAIN_DELIMITER not in uid, "parse_uid() does not support chained UIDs"
     dht_prefix, index = uid.split(UID_DELIMITER)
     return dht_prefix, int(index)
@@ -19,18 +24,32 @@ def parse_uid(uid: ModuleUID) -> Tuple[str, int]:
 
 @pydantic.dataclasses.dataclass
 class ModelInfo:
+    """
+    A description of a model that can be served by one or more servers
+    """
     num_blocks: pydantic.conint(ge=1, strict=True)
     repository: Optional[str] = None
 
     def to_dict(self) -> dict:
+        """
+        Convert a model info into a dictionary
+        """
         return dataclasses.asdict(self)
 
     @classmethod
     def from_dict(cls, source: dict):
+        """
+        Convert a dictionary into a model info
+        Args:
+            source: a dictionary to convert into a model info
+        """
         return cls(**source)
 
 
 class ServerState(Enum):
+    """
+    An enumeration of server states
+    """
     OFFLINE = 0
     JOINING = 1
     ONLINE = 2
@@ -41,6 +60,9 @@ RPS = pydantic.confloat(ge=0, allow_inf_nan=False, strict=True)
 
 @pydantic.dataclasses.dataclass
 class ServerInfo:
+    """
+    A description of a server that serves a specific model
+    """
     state: ServerState
     throughput: RPS
 
@@ -62,12 +84,20 @@ class ServerInfo:
     next_pings: Optional[Dict[str, pydantic.confloat(ge=0, strict=True)]] = None
 
     def to_tuple(self) -> Tuple[int, float, dict]:
+        """
+        Convert a server info into a tuple
+        """
         extra_info = dataclasses.asdict(self)
         del extra_info["state"], extra_info["throughput"]
         return (self.state.value, self.throughput, extra_info)
 
     @classmethod
     def from_tuple(cls, source: tuple):
+        """
+        Convert a tuple into a server info
+        Args:
+            source: a tuple to convert into a server info
+        """
         state, throughput = source[:2]
         extra_info = source[2] if len(source) > 2 else {}
         # pydantic will validate existing fields and ignore extra ones
@@ -76,7 +106,9 @@ class ServerInfo:
 
 @dataclasses.dataclass
 class RemoteModuleInfo:
-    """A remote module that is served by one or more servers"""
+    """
+    A remote module that is served by one or more servers
+    """
 
     uid: ModuleUID
     servers: Dict[PeerID, ServerInfo]
@@ -84,7 +116,9 @@ class RemoteModuleInfo:
 
 @dataclasses.dataclass
 class RemoteSpanInfo:
-    """A chain of remote blocks served by one specific remote peer"""
+    """
+    A chain of remote blocks served by one specific remote peer
+    """
 
     peer_id: PeerID
     start: int
@@ -111,6 +145,9 @@ Handle = int
 
 @dataclasses.dataclass(frozen=True)
 class InferenceMetadata:
+    """
+    Metadata for an inference request
+    """
     uid: ExpertUID
     prefix_length: int
     cache_handles: Tuple[Handle, ...]
