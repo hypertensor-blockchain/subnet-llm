@@ -233,7 +233,7 @@ def get_model_peers(
 
   return make_rpc_request()
 
-def get_model_peers_include(
+def get_model_peers_included(
   substrate: SubstrateInterface,
   model_id: int,
 ):
@@ -247,7 +247,7 @@ def get_model_peers_include(
   def make_rpc_request():
     try:
       model_peers_data = substrate.rpc_request(
-        method='network_getModelPeersInclude',
+        method='network_getModelPeersIncluded',
         params=[
           model_id
         ]
@@ -721,6 +721,13 @@ def get_model_data(
   return make_query()
 
 def get_max_models(substrate: SubstrateInterface):
+  """
+  Function to get the maximum number of models allowed on the blockchain
+
+  :param SubstrateInterface: substrate interface from blockchain url
+  :returns: max_models
+  """
+
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def make_query():
     try:
@@ -732,6 +739,13 @@ def get_max_models(substrate: SubstrateInterface):
   return make_query()
 
 def get_min_model_peers(substrate: SubstrateInterface):
+  """
+  Function to get the minimum number of peers required to host a model
+
+  :param SubstrateInterface: substrate interface from blockchain url
+  :returns: min_model_peers
+  """
+
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def make_query():
     try:
@@ -743,6 +757,13 @@ def get_min_model_peers(substrate: SubstrateInterface):
   return make_query()
 
 def get_max_model_peers(substrate: SubstrateInterface):
+  """
+  Function to get the maximum number of peers allowed to host a model
+
+  :param SubstrateInterface: substrate interface from blockchain url
+  :returns: max_model_peers
+  """
+
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def make_query():
     try:
@@ -754,6 +775,13 @@ def get_max_model_peers(substrate: SubstrateInterface):
   return make_query()
 
 def get_min_stake_balance(substrate: SubstrateInterface):
+  """
+  Function to get the minimum stake balance required to host a model
+  
+  :param SubstrateInterface: substrate interface from blockchain url
+  :returns: min_stake_balance
+  """
+
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def make_query():
     try:
@@ -765,6 +793,13 @@ def get_min_stake_balance(substrate: SubstrateInterface):
   return make_query()
 
 def get_tx_rate_limit(substrate: SubstrateInterface):
+  """
+  Function to get the transaction rate limit
+
+  :param SubstrateInterface: substrate interface from blockchain url
+  :returns: tx_rate_limit
+  """
+  
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def make_query():
     try:
@@ -776,6 +811,13 @@ def get_tx_rate_limit(substrate: SubstrateInterface):
   return make_query()
 
 def get_max_model_consensus_epochs(substrate: SubstrateInterface):
+  """
+  Function to get the maximum number of epochs allowed for model consensus
+
+  :param SubstrateInterface: substrate interface from blockchain url
+  :returns: max_model_consensus_epochs
+  """
+
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def make_query():
     try:
@@ -787,6 +829,13 @@ def get_max_model_consensus_epochs(substrate: SubstrateInterface):
   return make_query()
 
 def get_min_required_model_consensus_submit_epochs(substrate: SubstrateInterface):
+  """
+  Function to get the minimum number of epochs required to submit model consensus
+
+  :param SubstrateInterface: substrate interface from blockchain url
+  :returns: min_required_model_consensus_submit_epochs
+  """
+
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def make_query():
     try:
@@ -798,6 +847,13 @@ def get_min_required_model_consensus_submit_epochs(substrate: SubstrateInterface
   return make_query()
 
 def get_min_required_peer_consensus_submit_epochs(substrate: SubstrateInterface):
+  """
+  Function to get the minimum number of epochs required to submit peer consensus
+
+  :param SubstrateInterface: substrate interface from blockchain url
+  :returns: min_required_peer_consensus_submit_epochs
+  """
+
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def make_query():
     try:
@@ -809,6 +865,13 @@ def get_min_required_peer_consensus_submit_epochs(substrate: SubstrateInterface)
   return make_query()
 
 def get_min_required_peer_consensus_inclusion_epochs(substrate: SubstrateInterface):
+  """
+  Function to get the minimum number of epochs required to include peer consensus
+
+  :param SubstrateInterface: substrate interface from blockchain url
+  :returns: min_required_peer_consensus_inclusion_epochs
+  """
+
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def make_query():
     try:
@@ -820,6 +883,13 @@ def get_min_required_peer_consensus_inclusion_epochs(substrate: SubstrateInterfa
   return make_query()
 
 def get_maximum_outlier_delta_percent(substrate: SubstrateInterface):
+  """
+  Function to get the maximum outlier delta percent
+
+  :param SubstrateInterface: substrate interface from blockchain url
+  :returns: maximum_outlier_delta_percent
+  """
+
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def make_query():
     try:
@@ -831,6 +901,13 @@ def get_maximum_outlier_delta_percent(substrate: SubstrateInterface):
   return make_query()
 
 def get_remove_model_peer_epoch_percentage(substrate: SubstrateInterface):
+  """
+  Function to get the remove model peer epoch percentage
+
+  :param SubstrateInterface: substrate interface from blockchain url
+  :returns: remove_model_peer_epoch_percentage
+  """
+
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def make_query():
     try:
@@ -842,6 +919,13 @@ def get_remove_model_peer_epoch_percentage(substrate: SubstrateInterface):
   return make_query()
 
 def get_consensus_blocks_interval(substrate: SubstrateInterface):
+  """
+  Function to get the consensus blocks interval
+
+  :param SubstrateInterface: substrate interface from blockchain url
+  :returns: consensus_blocks_interval
+  """
+
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def make_query():
     try:

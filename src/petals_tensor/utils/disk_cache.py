@@ -17,6 +17,14 @@ BLOCKS_LOCK_FILE = "blocks.lock"
 
 @contextmanager
 def _blocks_lock(cache_dir: Optional[str], mode: int):
+    """
+    A context manager that acquires a lock on the blocks cache directory
+
+    Args:
+        cache_dir: The cache directory
+        mode: The lock mode
+    """
+
     if cache_dir is None:
         cache_dir = DEFAULT_CACHE_DIR
     lock_path = Path(cache_dir, BLOCKS_LOCK_FILE)
@@ -45,6 +53,16 @@ def free_disk_space_for(
     max_disk_space: Optional[int],
     os_quota: int = 1024**3,  # Minimal space we should leave to keep OS function normally
 ):
+    """
+    Removes the least recently used files from the cache directory to free up disk space
+
+    Args:
+        size: The size of the block to load
+        cache_dir: The cache directory
+        max_disk_space: The maximum disk space to use
+        os_quota: The minimal space we should leave to keep OS function normally
+    """
+    
     if cache_dir is None:
         cache_dir = DEFAULT_CACHE_DIR
     cache_info = huggingface_hub.scan_cache_dir(cache_dir)

@@ -35,6 +35,13 @@ class TransformerBackend(ModuleBackend):
         max_chunk_size_bytes: int,
         **kwargs,
     ):
+        """
+        :param config: transformer configuration
+        :param memory_cache: a cache for attention key-value pairs
+        :param backend_dtype: the dtype used for attention logits and other intermediate tensors
+        :param max_chunk_size_bytes: maximum number of bytes that can be processed in one forward pass
+        """
+        
         import petals_tensor.utils.peft as _peft_module
 
         self._peft_module = _peft_module
@@ -97,11 +104,23 @@ class TransformerBackend(ModuleBackend):
         return cache_tensors
 
     def forward(self, *inputs: Union[torch.Tensor, str]) -> Tuple[torch.Tensor, ...]:
+        """
+        Forward pass through the transformer block with a specified active adapter
+
+        :param inputs: input tensors and a string with the name of the active adapter
+        :return: output tensors
+        """
         *inputs, active_adapter = inputs
         with self._peft_module.using_adapter(active_adapter):
             return super().forward(*inputs)
 
     def backward(self, *inputs: Union[torch.Tensor, str]) -> Tuple[torch.Tensor, ...]:
+        """
+        Backward pass through the transformer block with a specified active adapter
+
+        :param inputs: input tensors and a string with the name of the active adapter
+        :return: output tensors
+        """
         *inputs, active_adapter = inputs
         with self._peft_module.using_adapter(active_adapter):
             return super().backward(*inputs)
@@ -113,6 +132,15 @@ class TransformerBackend(ModuleBackend):
         hypo_ids: torch.LongTensor,
         inference_info: InferenceMetadata,
     ) -> Tuple[torch.Tensor, ...]:
+        """
+        Process a single inference step for a transformer block
+
+        :param hidden_states: input hidden states of shape [batch_size, seq_len, hidden_size]
+        :param hypo_ids: indices of hypotheses in the batch
+        :param inference_info: metadata about the inference request
+        :return: output hidden states of shape [batch_size, seq_len, hidden_size]
+        """
+        
         assert hidden_states.ndim == 3, "expected hidden states to be 3-dimensional: [batch_size, seq_len, hid_size]"
         seq_len = hidden_states.shape[1]
 
@@ -179,6 +207,7 @@ class TransformerBackend(ModuleBackend):
             cache_value[:, :, prefix_length:new_length, :] = new_value[:, :, prefix_length:new_length, :]
 
     def get_pools(self) -> Sequence[PrioritizedTaskPool]:
+        """Get the pools for forward, backward and inference tasks"""
         return self.forward_pool, self.backward_pool, self.inference_pool
 
     def get_info(self) -> Dict[str, Any]:
@@ -223,6 +252,15 @@ class _MergedInferenceStep:
         inference_infos: Sequence[InferenceMetadata],
         *optional_prompts: Optional[torch.Tensor],
     ) -> Tuple[torch.Tensor, ...]:
+        """
+        Process a single inference step for multiple transformer blocks in parallel using a single call
+
+        :param hidden_states: input hidden states of shape [batch_size, seq_len, hidden_size]
+        :param hypo_ids: indices of hypotheses in the batch
+        :param inference_infos: metadata about the inference requests
+        :param optional_prompts: optional prompts for each block
+        :return: output hidden states of shape [batch_size, seq_len, hidden_size
+        """
         assert len(inference_infos) == len(
             optional_prompts
         ), f"found {len(inference_infos)} blocks but {len(optional_prompts)} prompts"

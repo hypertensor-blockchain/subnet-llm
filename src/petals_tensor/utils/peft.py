@@ -26,10 +26,24 @@ logger = get_logger(__name__)
 
 
 def check_peft_repository(repo_id: str) -> bool:
+    """
+    Check if the repository has safetensors inside for a safe loading of the weights
+    """
     return HfFileSystem().exists(f"{repo_id}/{SAFETENSORS_WEIGHTS_NAME}")
 
 
 def load_specific_module(block_idx: int, filepath: str, framework: str = "pt", device: Optional[int] = None):
+    """
+    Load a specific module from the peft weights
+
+    Returns:
+        a dictionary of tensors for the given block
+    Args:
+        block_idx: a block index
+        filepath: a path to the peft weights
+        framework: a framework to use
+        device: a device to use
+    """
     tensors = dict()
     is_tensors_found = dict()
     common_layer_patter_re = (
@@ -53,6 +67,18 @@ def get_adapter_from_repo(
     token: Optional[Union[str, bool]] = None,
     **kwargs,
 ):
+    """
+    Get the adapter from the repository
+    Returns:
+        a dictionary of tensors for the given block
+    Args:
+        repo_id: a repository id
+        block_idx: a block index
+        device: a device to use
+        token: a token to use
+        **kwargs: additional arguments
+    """
+    
     config_path = get_file_from_repo(repo_id, CONFIG_NAME, use_auth_token=token, **kwargs)
     if config_path is None:
         raise RuntimeError(f"File {CONFIG_NAME} does not exist in repo {repo_id}")
@@ -77,6 +103,21 @@ def load_peft(
     max_disk_space: Optional[int] = None,
     delay: float = 30,
 ):
+    """
+    Load the peft weights
+    Returns:
+        a dictionary of tensors for the given block
+    Args:
+        repo_id: a repository id
+        block_idx: a block index
+        device: a device to use
+        revision: a revision to use
+        token: a token to use
+        cache_dir: a cache directory
+        max_disk_space: a maximum disk space
+        delay: a delay
+    """
+    
     # TODO: Check is it possible to add safetensors loading inside petals/server/from_pretrained.py and reuse it here
 
     if not check_peft_repository(repo_id):
@@ -127,7 +168,9 @@ def load_peft(
 
 
 class AdapterContextMixin:
-    """A mixin that makes LoRA-wrapped linear layers obey an adapter set from context"""
+    """
+    A mixin that makes LoRA-wrapped linear layers obey an adapter set from context
+    """
 
     ADAPTER_NOT_SET = "__ADAPTER_NOT_SET"
     _context_active_adapter = ADAPTER_NOT_SET
@@ -168,6 +211,13 @@ class LoraLinear4bit(AdapterContextMixin, lora.Linear4bit):
 
 
 def create_lora_adapter(block, quant_type: QuantType):
+    """
+    Create LoRA adapters for all linear layers in the block
+    Args:
+        block: a block to create adapters for
+        quant_type: a quantization type
+    """
+
     for _, module in block.named_modules():
         for child_name, child in module.named_children():
             lora_wrapped_child = None
@@ -271,7 +321,16 @@ def estimate_adapter_memory_per_block(
     adapters: Sequence[str],
     **load_peft_kwargs,
 ) -> int:
-    """Get the number of extra bytes used to store a set of adapters per given block"""
+    """
+    Estimate the number of extra bytes used to store a set of adapters per given block
+    Returns:
+        the number of bytes used to store the adapters
+    Args:
+        block_config: a block configuration
+        torch_dtype: a torch data type
+        adapters: a list of adapters
+        **load_peft_kwargs: additional arguments
+    """
     with init_empty_weights(include_buffers=True):
         block = block_config.block_class(block_config)
         base_block_parameters = sum(p.numel() for p in block.parameters())

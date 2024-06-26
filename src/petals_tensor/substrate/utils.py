@@ -4,7 +4,7 @@ Miscellaneous
 import pickle
 from typing import List, Dict
 from petals_tensor.substrate.chain_data import ModelPeerData
-from petals_tensor.substrate.chain_functions import get_model_peers_include, get_model_peers_submittable
+from petals_tensor.substrate.chain_functions import get_model_peers_included, get_model_peers_submittable
 from petals_tensor.substrate.config import PERCENTAGE_EPOCH_HEALTH_CONSENSUS_RECHECK, load_network_config
 from substrateinterface import SubstrateInterface
 from petals_tensor.health.state_updater import StateUpdaterThreadV2
@@ -173,7 +173,7 @@ def get_score(x: int, peers: int, blocks_per_layer: int, total_blocks: int) -> i
   return y
 
 def get_consensus_data(substrate: SubstrateInterface, model_id: int) -> Dict:
-  result = get_model_peers_include(
+  result = get_model_peers_included(
     substrate,
     model_id
   )

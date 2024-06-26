@@ -80,6 +80,17 @@ def get_remote_module_infos(
     latest: bool = False,
     return_future: bool = False,
 ) -> Union[List[RemoteModuleInfo], MPFuture]:
+    """
+    Get information about active modules from the DHT
+
+    :param dht: DHT instance
+    :param uids: a list of module ids to get information about
+    :param expiration_time: get only the information that was stored before this time
+    :param active_adapter: get only the information about servers that support this adapter
+    :param latest: if True, get the latest information about the servers
+    :param return_future: if True, return an MPFuture instead of awaiting for the result
+    :returns: a list of RemoteModuleInfo objects (or an MPFuture if return_future is True)
+    """
     return dht.run_coroutine(
         partial(
             _get_remote_module_infos,
@@ -100,11 +111,22 @@ async def _get_remote_module_infos(
     expiration_time: Optional[DHTExpiration],
     latest: bool,
 ) -> List[RemoteModuleInfo]:
+    """
+    Get information about active modules from the DHT
+
+    :param dht: DHT instance
+    :param uids: a list of module ids to get information about
+    :param expiration_time: get only the information that was stored before this time
+    :param active_adapter: get only the information about servers that support this adapter
+    :param latest: if True, get the latest information about the servers
+    :returns: a list of RemoteModuleInfo objects
+    """
     if latest:
         assert expiration_time is None, "You should define either `expiration_time` or `latest`, not both"
         expiration_time = math.inf
     elif expiration_time is None:
         expiration_time = get_dht_time()
+    
     num_workers = len(uids) if dht.num_workers is None else min(len(uids), dht.num_workers)
     found: Dict[ModuleUID, DHTValue] = await node.get_many(uids, expiration_time, num_workers=num_workers)
 
@@ -132,6 +154,13 @@ async def _get_remote_module_infos(
 
 
 def compute_spans(module_infos: List[RemoteModuleInfo], *, min_state: ServerState) -> Dict[PeerID, RemoteSpanInfo]:
+    """
+    Compute contiguous spans of active modules for each peer in the given list of module infos
+    
+    :param module_infos: a list of RemoteModuleInfo objects
+    :param min_state: only consider servers with state >= min_state
+    :returns: a dictionary mapping peer ids to RemoteSpanInfo objects
+    """
     block_offset = parse_uid(module_infos[0].uid)[1] if module_infos else 0
     num_blocks = len(module_infos)
 

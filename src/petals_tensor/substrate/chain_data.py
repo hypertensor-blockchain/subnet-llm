@@ -31,6 +31,9 @@ custom_rpc_type_registry = {
 }
 
 class ParamWithTypes(TypedDict):
+  """
+  TypedDict for a parameter with its types.
+  """
   name: str  # Name of the parameter.
   type: str  # ScaleType string of the parameter.
 
@@ -57,6 +60,9 @@ def _encode_params(
   return param_data.to_hex()
 
 class ChainDataType(Enum):
+  """
+  Enum for chain data types.
+  """
   ModelPeerData = 1
 
 def from_scale_encoding(
@@ -65,6 +71,19 @@ def from_scale_encoding(
     is_vec: bool = False,
     is_option: bool = False,
 ) -> Optional[Dict]:
+    """
+    Returns the decoded data from the SCALE encoded input.
+
+    Args:
+      input (Union[List[int], bytes, ScaleBytes]): The SCALE encoded input.
+      type_name (ChainDataType): The ChainDataType enum.
+      is_vec (bool): Whether the input is a Vec.
+      is_option (bool): Whether the input is an Option.
+
+    Returns:
+      Optional[Dict]: The decoded data
+    """
+    
     type_string = type_name.name
     # if type_name == ChainDataType.DelegatedInfo:
       # DelegatedInfo is a tuple of (DelegateInfo, Compact<u64>)
@@ -79,6 +98,17 @@ def from_scale_encoding(
 def from_scale_encoding_using_type_string(
   input: Union[List[int], bytes, ScaleBytes], type_string: str
 ) -> Optional[Dict]:
+  """
+  Returns the decoded data from the SCALE encoded input using the type string.
+
+  Args:
+    input (Union[List[int], bytes, ScaleBytes]): The SCALE encoded input.
+    type_string (str): The type string.
+
+  Returns:
+    Optional[Dict]: The decoded data
+  """
+  
   if isinstance(input, ScaleBytes):
     as_scale_bytes = input
   else:
@@ -159,6 +189,10 @@ class ModelPeerData:
 
   @staticmethod
   def _null_model_peer_data() -> "ModelPeerData":
+    """
+    Returns a ModelPeerData object with null values.
+    """
+
     model_peer_data = ModelPeerData(
       account_id="000000000000000000000000000000000000000000000000",
       peer_id=0,
@@ -170,6 +204,16 @@ class ModelPeerData:
 
   @staticmethod
   def _model_peer_data_to_namespace(model_peer_data) -> "ModelPeerData":
+    """
+    Converts a ModelPeerData object to a namespace.
+
+    Args:
+      model_peer_data (ModelPeerData): The ModelPeerData object.
+
+    Returns:
+      ModelPeerData: The ModelPeerData object.
+    """
+
     # TODO: Legacy: remove?
     if model_peer_data["account_id"] == "5C4hrfjw9DjXZTzV3MwzrrAr9P1MJhSrvWGWqi1eSuyUpnhM":
       return ModelPeerData._null_model_peer_data()

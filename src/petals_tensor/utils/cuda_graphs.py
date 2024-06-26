@@ -3,7 +3,14 @@ from torch.utils._pytree import tree_flatten as _tree_flatten, tree_unflatten as
 
 
 def make_inference_graphed_callable(callable: callable, sample_args, num_warmup_iters=3):
-    """Similar to torch.cuda.make_graphed_callables, but takes only one function and does not build a graph for the backward pass"""
+    """
+    Similar to torch.cuda.make_graphed_callables, but takes only one function and does not build a graph for the backward pass
+
+    :param callable: a callable that takes sample_args as input and returns a tensor or a tuple of tensors
+    :param sample_args: a tuple of input tensors to the callable
+    :param num_warmup_iters: the number of warmup iterations to run before capturing the graph
+    :return: a callable that runs the captured graph
+    """
     assert not isinstance(callable, torch.nn.Module)
     if torch.is_autocast_enabled() and torch.is_autocast_cache_enabled():
         raise RuntimeError(
@@ -46,6 +53,11 @@ def make_inference_graphed_callable(callable: callable, sample_args, num_warmup_
         static_input_surface,
         static_outputs,
     ):
+        """
+        This function is a closure that captures the graph, the static input surface, and the static outputs.
+        It returns a callable that replays the graph with new inputs.
+        """
+
         def replay_graph(*inputs):
             # At this stage, only the user args may (potentially) be new tensors.
             for i in range(len_user_args):

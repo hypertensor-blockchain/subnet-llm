@@ -56,11 +56,25 @@ class ModelDataConfig:
     self.initialized = initialized
 
 def save_model_config(data: ModelDataConfig):
+  """
+  Save the model data configuration
+
+  Args:
+    data (ModelDataConfig): The model data configuration
+  """
+
   dbfile = open('model_data_config', 'wb')
   pickle.dump(data, dbfile)                    
   dbfile.close()
 
 def load_model_config():
+  """
+  Load the model data configuration
+
+  Returns:
+    ModelDataConfig: The model data configuration
+  """
+
   dbfile = open('model_data_config', 'rb')    
   db = pickle.load(dbfile)
   
@@ -94,6 +108,13 @@ class ModelValidatorConfig:
     self.removed = removed
 
 def save_model_validator_config(data: ModelValidatorConfig):
+  """
+  Save the model validator configuration
+
+  Args:
+    data (ModelValidatorConfig): The model validator configuration
+  """
+
   with open('model_validator_config', 'wb') as dbfile:
     pickle.dump(data, dbfile, pickle.HIGHEST_PROTOCOL)
   # dbfile = open('model_validator_config', 'wb')
@@ -101,6 +122,13 @@ def save_model_validator_config(data: ModelValidatorConfig):
   # dbfile.close()
 
 def load_model_validator_config():
+  """
+  Load the model validator configuration
+
+  Returns:
+    ModelValidatorConfig: The model validator configuration
+  """
+
   with open('model_validator_config', 'rb') as dbfile:
     db = pickle.load(dbfile)
     return db
@@ -149,11 +177,25 @@ class NetworkConfig:
     self.remove_model_peer_epoch_percentage = remove_model_peer_epoch_percentage
 
 def save_network_config(data: NetworkConfig):
+  """
+  Save the network configuration
+
+  Args:
+    data (NetworkConfig): The network configuration
+  """
+
   dbfile = open('network_config', 'wb')
   pickle.dump(data, dbfile)                    
   dbfile.close()
 
 def load_network_config():
+  """
+  Load the network configuration
+
+  Returns:
+    NetworkConfig: The network configuration
+  """
+
   dbfile = open('network_config', 'rb')    
   db = pickle.load(dbfile)
   dbfile.close()
