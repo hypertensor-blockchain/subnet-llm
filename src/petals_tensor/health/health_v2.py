@@ -171,3 +171,50 @@ def get_online_peers(dht: hivemind.DHT) -> List:
     online_servers = [peer_id for peer_id, span in all_servers.items() if span.state == ServerState.ONLINE]
 
     return online_servers
+
+def get_online_peers_data(dht: hivemind.DHT) -> List:
+    bootstrap_peer_ids = []
+    for addr in INITIAL_PEERS:
+        peer_id = hivemind.PeerID.from_base58(Multiaddr(addr)["p2p"])
+        if peer_id not in bootstrap_peer_ids:
+            bootstrap_peer_ids.append(peer_id)
+
+    reach_infos = dht.run_coroutine(partial(check_reachability_parallel, bootstrap_peer_ids))
+    bootstrap_states = ["online" if reach_infos[peer_id]["ok"] else "unreachable" for peer_id in bootstrap_peer_ids]
+
+    model = MODEL
+
+    logger.info(f"Fetching online peers for model {model}")
+
+    block_uids = [f"{model.dht_prefix}{UID_DELIMITER}{i}" for i in range(model.num_blocks)]
+    module_infos = get_remote_module_infos(dht, block_uids, latest=True)
+
+    all_servers = {}
+    offset = 0
+    model_servers = compute_spans(
+        module_infos[offset : offset + model.num_blocks], min_state=ServerState.OFFLINE
+    )
+    all_servers.update(model_servers)
+
+    offset += model.num_blocks
+
+    online_servers = [peer_id for peer_id, span in all_servers.items() if span.state == ServerState.ONLINE]
+
+    reach_infos.update(dht.run_coroutine(partial(check_reachability_parallel, online_servers, fetch_info=True)))
+
+    peers_data = []
+    for peer_id, span in sorted(model_servers.items()):
+        reachable = reach_infos[peer_id]["ok"] if peer_id in reach_infos else True
+        state = span.state.name.lower() if reachable else "unreachable"
+
+        if state == "online":
+            """"""
+            peer_data = {
+                "peer_id": peer_id,
+                "span_start": span.start,
+                "span_end": span.end
+            }
+
+            peers_data.append(peer_data)
+
+    return peers_data
