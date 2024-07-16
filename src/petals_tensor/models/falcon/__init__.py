@@ -2,6 +2,7 @@ from petals_tensor.models.falcon.block import WrappedFalconBlock
 from petals_tensor.models.falcon.config import DistributedFalconConfig
 from petals_tensor.models.falcon.model import (
     DistributedFalconForCausalLM,
+    DistributedFalconForCausalLMValidator,
     DistributedFalconForSequenceClassification,
     DistributedFalconModel,
 )
@@ -11,5 +12,6 @@ register_model_classes(
     config=DistributedFalconConfig,
     model=DistributedFalconModel,
     model_for_causal_lm=DistributedFalconForCausalLM,
+    model_for_causal_lm_validator=DistributedFalconForCausalLMValidator,
     model_for_sequence_classification=DistributedFalconForSequenceClassification,
 )
