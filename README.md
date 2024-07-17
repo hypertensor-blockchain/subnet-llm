@@ -1,5 +1,5 @@
 <h1 align="center">
-    Petals Tensor
+    Subnet LLM, previously Petals Tensor
 </h1>
 <p align="center">
     <a href="https://www.hypertensor.org" target="_blank">Visit our website!</a>
