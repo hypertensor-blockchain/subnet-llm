@@ -8,11 +8,6 @@ from transformers.models.falcon.modeling_falcon import FalconAttention
 from petals_tensor.client.config import ClientConfig
 from petals_tensor.client.lm_head import LMHeadConfig
 from petals_tensor.client.ptune import PTuneConfig
-
-from petals_tensor.validator.config import ClientConfig as ClientConfigValidator
-from petals_tensor.validator.lm_head import LMHeadConfig as LMHeadConfigValidator
-from petals_tensor.validator.ptune import PTuneConfig as PTuneConfigValidator
-
 from petals_tensor.models.falcon.block import WrappedFalconBlock
 from petals_tensor.utils.auto_config import DefaultRevisionMixin
 

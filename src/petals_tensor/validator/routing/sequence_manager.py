@@ -143,6 +143,7 @@ class RemoteSequenceManager:
         *,
         mode: str,
         cache_tokens_needed: Optional[int] = None,
+        # peer_ids: Optional[List[str]] = None,
         peers: Optional[List[Dict]] = None,
         peer_id: Optional[str] = None,
     ) -> List[RemoteSpanInfo]:

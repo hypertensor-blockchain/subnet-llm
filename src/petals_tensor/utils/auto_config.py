@@ -15,7 +15,6 @@ class _ModelClasses:
     config: Type[PretrainedConfig]
     model: Optional[Type[PreTrainedModel]] = None
     model_for_causal_lm: Optional[Type[PreTrainedModel]] = None
-    model_for_causal_lm_validator: Optional[Type[PreTrainedModel]] = None
     model_for_sequence_classification: Optional[Type[PreTrainedModel]] = None
 
 
@@ -107,11 +106,10 @@ class AutoDistributedConfig(DefaultRevisionMixin, _AutoDistributedBase):
 class AutoDistributedModel(DefaultRevisionMixin, _AutoDistributedBase):
     _mapping_field = "model"
 
+
 class AutoDistributedModelForCausalLM(DefaultRevisionMixin, _AutoDistributedBase):
     _mapping_field = "model_for_causal_lm"
 
-class AutoDistributedModelForCausalLMValidator(DefaultRevisionMixin, _AutoDistributedBase):
-    _mapping_field = "model_for_causal_lm_validator"
 
 class AutoDistributedModelForSequenceClassification(DefaultRevisionMixin, _AutoDistributedBase):
     _mapping_field = "model_for_sequence_classification"

@@ -7,8 +7,7 @@ from hivemind import PeerID
 from petals_tensor.constants import PUBLIC_INITIAL_PEERS
 
 _max_retries = os.getenv("PETALS_MAX_RETRIES")
-# DEFAULT_MAX_RETRIES = int(_max_retries) if isinstance(_max_retries, str) else None
-DEFAULT_MAX_RETRIES = int(_max_retries) if isinstance(_max_retries, str) else 10
+DEFAULT_MAX_RETRIES = int(_max_retries) if isinstance(_max_retries, str) else None
 
 
 @dataclasses.dataclass

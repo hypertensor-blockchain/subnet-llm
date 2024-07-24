@@ -1,7 +1,5 @@
 """
 python -m petals_tensor.cli.run_server_test petals-team/StableBeluga2 --public_ip 170.000.000.000 --tcp_public_ip 170.000.000.000 --port 30332 --tcp_port 8889 --num_blocks 5
-python -m petals_tensor.cli.run_server_test petals-team/StableBeluga2 --public_ip 170.250.110.241 --tcp_public_ip 170.250.110.241 --port 30332 --tcp_port 8889 --num_blocks 5
-
 """
 import multiprocessing
 import os
@@ -20,7 +18,7 @@ from humanfriendly import parse_size
 
 from petals_tensor.constants import DTYPE_MAP, PUBLIC_INITIAL_PEERS
 # from petals_tensor.server.server_test import Server
-# from petals_tensor.server.server import Server
+from petals_tensor.server.server import Server
 from petals_tensor.server.server_test_2 import Server as ServerTest2
 
 from petals_tensor.utils.convert_block import QuantType

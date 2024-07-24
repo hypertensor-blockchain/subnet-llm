@@ -404,7 +404,6 @@ class Server:
                         logger.info("Swarm is imbalanced, server will load other blocks")
                         break  # Stop serving this set of modules
                     
-                    # If validator and validating and blocks don't match strict blocks then update
                     if self._should_choose_strict_blocks() and self.is_validator == True:
                         logger.info("Node is strict, server will load strict blocks")
                         break  # Stop serving this set of modules
@@ -498,13 +497,10 @@ class Server:
         self.strict_block_indices = None
 
     def shutdown(self, timeout: Optional[float] = 5):
-        print("shutdown server")
         self.stop.set()
         if self.module_container is not None and self.module_container.is_alive():
             self.module_container.join(timeout)
 
-        print("self.inference_validator is not None", self.inference_validator is not None)
-        print("self.inference_validator.is_alive()", self.inference_validator.is_alive())
         if self.inference_validator is not None and self.inference_validator.is_alive():
             self.inference_validator.shutdown()
 

@@ -8,11 +8,6 @@ from transformers.models.bloom.modeling_bloom import BloomAttention
 from petals_tensor.client.config import ClientConfig
 from petals_tensor.client.lm_head import LMHeadConfig
 from petals_tensor.client.ptune import PTuneConfig
-
-from petals_tensor.validator.config import ClientConfig as ClientConfigValidator
-from petals_tensor.validator.lm_head import LMHeadConfig as LMHeadConfigValidator
-from petals_tensor.validator.ptune import PTuneConfig as PTuneConfigValidator
-
 from petals_tensor.models.bloom.block import WrappedBloomBlock
 
 logger = get_logger(__name__)

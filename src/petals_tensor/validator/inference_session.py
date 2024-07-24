@@ -227,7 +227,6 @@ class InferenceSession:
         self.peer_id = peer_id
         self.peers = peers
         self.peer_ids = peer_ids
-        self.inference_session_data = []
         # print("InferenceSession validator init sequence_manager", sequence_manager)
 
     @property
@@ -312,9 +311,6 @@ class InferenceSession:
                 f"Maximum length exceeded: prefix {self._position} + current {n_input_tokens} exceeds pre-allocated maximum {self._max_length}"
             )
 
-        print("\n\n\n")
-        print("step n_input_tokens", n_input_tokens)
-        print("step self._position", self._position)
         server_idx = 0
         block_idx = 0
 
@@ -324,25 +320,24 @@ class InferenceSession:
         You can set the peers peer_start_block and peer_end_block here but the inference will not be sufficient - but may be used for validation purposes
         Also must update make_sequence update_end
         """
-        # peer_start_block = 0
-        # block_idx = peer_start_block
-        # peer_end_block = 13
+        peer_start_block = 0
+        block_idx = peer_start_block
+        peer_end_block = 13
         
         # while block_idx < peer_end_block:
         while block_idx < self.num_blocks:
-            print("\n\n\n while block_idx < self.num_blocks")
             for attempt_no in itertools.count():
                 logger.debug(f"Inference: block {block_idx}, attempt {attempt_no}")
                 server_session = None
+                # print("attempt_no", attempt_no)
+
                 try:
                     if not self._server_sessions or attempt_no >= 1:
                         self._update_sequence(server_idx, block_idx, attempt_no)
 
-                    print("step block_idx", block_idx)
-
                     server_session = self._server_sessions[server_idx]
-                    print("step server_session.span.start", server_session.span.start)
-                    print("step server_session.span.end", server_session.span.end)
+                    # print("server_session.span.start", server_session.span.start)
+                    # print("server_session.span.end", server_session.span.end)
 
                     inputs = server_session.step(
                         inputs, prompts[server_session.span.start : server_session.span.end], hypo_ids, step_id=step_id
@@ -350,25 +345,9 @@ class InferenceSession:
 
                     server_idx += 1
                     block_idx = server_session.span.end
+                    # print("block_idx", block_idx)
 
-                    print("step inputs        ", inputs)
-                    print("step server_session.span", str(server_session.span))
-                    print("step server_idx", server_idx)
-
-                    step_outputs = inputs[:, -n_input_tokens:]
-                    step_outputs = step_outputs.to(device=inputs_device, dtype=inputs_dtype)
-                    self.inference_session_data.append(
-                        {
-                            "server_idx": server_idx,
-                            "inputs": inputs,
-                            "outputs": step_outputs,
-                            "span_start": server_session.span.start,
-                            "span_end": server_session.span.end,
-                            "attempt_no": attempt_no,
-                            "peer_id": server_session.span.peer_id if server_session is not None else None,
-                            "server_session": str(server_session.span) if server_session is not None else None,
-                        }
-                    )
+                    # print("inputs", inputs)
 
                     # tokenizer = AutoTokenizer.from_pretrained("petals-team/StableBeluga2")
                     # print("decode ->", tokenizer.decode(inputs['input_ids']))
@@ -393,21 +372,20 @@ class InferenceSession:
 
         self._position += n_input_tokens
         outputs = inputs[:, -n_input_tokens:]
-        print("step inputs[:, -n_input_tokens:]       -> ", outputs)
-
         outputs = outputs.to(device=inputs_device, dtype=inputs_dtype)
-        print("step outputs       -> ", outputs)
-        print("step inputs        -> ", inputs)
-
-        print("\n\n\n")
+        # print("outputs", outputs)
         return outputs
 
     def _update_sequence(self, server_idx: int, block_idx: int, attempt_no: int) -> int:
+        # print("validator _update_sequence server_idx", server_idx)
+        # print("validator _update_sequence block_idx", block_idx)
+        # print("validator _update_sequence attempt_no", attempt_no)
         # If there is a failed server session, this code closes it
         self._exit_server_sessions(self._server_sessions[server_idx : server_idx + 1])
 
         n_prev_spans = len(self._server_sessions)
         update_end = self._server_sessions[server_idx].span.end if server_idx < n_prev_spans else self.num_blocks
+        # print("validator _update_sequence update_end", update_end)
         if attempt_no >= 1:
             logger.debug(
                 f"Due to a server failure, remote attention caches "
