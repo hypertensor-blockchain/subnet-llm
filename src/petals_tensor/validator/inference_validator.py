@@ -6,19 +6,22 @@ import dataclasses
 import time
 import multiprocessing as mp
 
+# from petals_tensor.substrate.config import load_model_config
+from petals_tensor.validator.config import AccountantData, AccountantDataPeerParams, PeerInferenceSequenceData
 from petals_tensor.validator.routing.sequence_manager import MissingBlocksError
 from petals_tensor.data_structures import RemoteSpanInfo
 from petals_tensor.health.state_updater import get_peers_data_list
-# from petals_tensor.server.server_test_2 import Server
 # from petals_tensor.substrate.chain_functions import propose_model_peer_dishonest, vote_model_peer_dishonest
 from petals_tensor.utils.auto_config import AutoDistributedModelForCausalLMValidator
 # from petals_tensor.substrate import config as substrate_config
 
 from transformers import AutoTokenizer
-import numpy as np
+# import numpy as np
 import torch
 from hivemind.utils.logging import get_logger
 from hivemind import PeerID
+
+import pprint 
 
 logger = get_logger(__name__)
 
@@ -60,7 +63,14 @@ class InferenceValidator(threading.Thread):
         self.num_blocks = num_blocks
         self.ranges = list(itertools.combinations(range(0,num_model_blocks+1), 2))
 
+        # Is this epochs accountant required to submit data
+        self.is_accountant = False
         self.accountant_data = AccountantData()
+
+        # model_config = load_model_config()
+        # self.model_id = model_config.id
+        self.model_id = None
+
 
         # TODO: Get blacklisted peers to automatically create a dishonesty proposal for them
 
@@ -78,132 +88,6 @@ class InferenceValidator(threading.Thread):
             self.run_in_background(await_ready=True)
 
         self.stop = threading.Event()
-
-    # def run2(self):
-    #     print("run InferenceValidator")
-    #     while True:
-
-    #         if self.server.module_container is None:
-    #             time.sleep(30)
-    #             logger.info(f"module_container is None, sleeping for {MODULE_CONTAINER_WAIT}s")
-    #             continue
-
-    #         block_span_initialized = self.server.module_container.is_healthy()
-    #         print("run block_span_initialized", block_span_initialized)
-    #         if block_span_initialized == False:
-    #             # sleep example
-    #             logger.info(f"block_span_initialized == False, sleeping for {MODULE_CONTAINER_WAIT}s")
-    #             time.sleep(30)
-    #             continue
-
-    #         """
-    #         Check current epoch, ensure epoch not already validated
-
-    #         Each validator will check each peer or designated peers at random per epoch
-            
-    #         We ensure here that the validator is not processing duplicate inference validations
-    #         on the same epoch. Sleep until the next epoch is reached
-            
-    #         """
-    #         epoch = self._get_epoch()
-    #         print("run epoch", epoch)
-    #         print("run self.epoch", self.epoch)
-
-    #         if epoch == self.epoch:
-    #             # do calculations to set to wait remaining time period
-    #             print("epoch == self.epoch")
-
-    #             # sleep example
-    #             time.sleep(30)
-    #             continue
-        
-    #         # self.epoch = epoch
-
-    #         """Set as validator for full control over blocks"""
-    #         self.server.is_validator = True
-
-    #         try:
-    #             """Get all peers and update list of peers for this epoch"""
-    #             logger.info("Updating peers within the epoch")
-    #             self.update_peers()
-
-    #             logger.info("Retrieve PeerIDs to validate")
-    #             # Get all peer_ids to validate 
-    #             peer_ids = self.select_peer_ids()
-    #             # print("iv peer_ids", peer_ids)
-
-    #             # Manual peers for testing purposes
-    #             # peer_ids = ["12D3KooWCWrjfLzYL4zJevm35MzexAwjngE1WNPYeiHrsLTGEkoy"]
-
-    #             for peer_id in peer_ids:
-    #                 # Get peer data for inference validation
-    #                 logger.info("Getting peer data")
-    #                 peer_data = self._get_peer_data(peer_id)
-
-    #                 # Get block spans
-    #                 span_start = peer_data['span_start']
-    #                 span_end = peer_data['span_end']
-    #                 block_indices = f"{span_start}:{span_end}"
-                    
-    #                 #  Spans must be in order based on using custom sequence logic
-    #                 if span_end - span_start > self.num_blocks:
-    #                     # TODO: Do not go over max blocks but shouldn't be possible here
-    #                     span_end = span_start + self.num_blocks
-
-    #                 logger.info(f"Validating inference on {peer_id} with indices {block_indices}")
-
-    #                 peers = [{
-    #                     'peer_id':peer_id,
-    #                     'start':span_start,
-    #                     'end':span_end,
-    #                 }]
-
-    #                 # TODO: If a server has a larger block span than the validator, we must only check
-    #                 #       the block span up to the validators block span.
-    #                 #       This is done by including peers block spans parameter in the _make_sequence_with_specific_peers
-    #                 #       function within the sequence_manager.py file within the routing directory.
-
-    #                 # Update validator block spans
-    #                 logger.info(f"Updating validator blocks to {block_indices} if needed".format())
-    #                 self.server.update_strict_block_indices(block_indices)
-
-    #                 # Begin inference validation
-    #                 while True:
-    #                     logger.info(f"Verifying validator blocks have begun")
-    #                     # Wait for new blocks to be healthy
-    #                     if self.server.module_container is None:
-    #                         logger.info("Module container not loaded yet")
-    #                         time.sleep(MODULE_CONTAINER_WAIT)
-    #                         continue
-
-    #                     # Example: Wait until blocks are updated
-    #                     # This is a hack attempt - need to instead check for that blocks have been updated to the correct spans
-    #                     logger.info(f"Verifying validator blocks are healthy")
-    #                     new_block_span_updated = self.server.module_container.is_healthy()
-
-    #                     if new_block_span_updated == False:
-    #                         logger.info("Module container not healthy yet")
-    #                         time.sleep(MODULE_CONTAINER_WAIT)
-    #                         continue
-
-    #                     # Run inference on expected block spans to get expected output
-    #                     output = self.run_inference(self.input_data, peer_id=self.my_peer_id)
-    #                     print("validator output", output)
-
-    #                     # Run inference on peer and check if output is expected
-    #                     valid = self.validate_inference(self.input_data, output, peers=[peers])
-    #                     print("iv valid", valid)
-
-    #                     # If not valid, propose or vote dishonesty
-    #                     if valid == False:
-    #                         self.initiate_dishonesty(peer_id)
-                        
-    #                     break
-    #         except Exception as e:
-    #             print("Error", e)
-    #         finally:
-    #             self.server.remove_strict_block_indices()
-    #             self.server.is_validator = False
 
     def run(self):
         while True:
@@ -477,18 +361,35 @@ class InferenceValidator(threading.Thread):
                 logger.info(f"Expected output tensor sum is:   {expected_outputs_tensor_sum}")
                 logger.info(f"Validating output tensor sum is: {outputs_tensor_sum}")
 
+                logger.info("expected_outputs: \n")
+                pprint.pprint(expected_outputs)
+                logger.info("outputs: \n")
+                pprint.pprint(outputs)
 
                 valid = torch.allclose(expected_outputs, outputs, rtol=RTOL, atol=ATOL, equal_nan=False)
 
-                peer_inference_data = PeerInferenceSequenceData(
+                accountant_data_peer_params = AccountantDataPeerParams(
                     peer_id=peer_id,
-                    span_start=span_start,
-                    span_end=span_end,
-                    accountant_tensor_sum=expected_outputs_tensor_sum,
-                    tensor_sum=tensor_sum,
-                    valid=valid,
+                    data=PeerInferenceSequenceData(
+                        peer_id=peer_id,
+                        span_start=int(span_start),
+                        span_end=int(span_end),
+                        accountant_tensor_sum=float(expected_outputs_tensor_sum),
+                        tensor_sum=float(tensor_sum),
+                        accountant_tensor=str(expected_outputs),
+                        peer_tensor=str(outputs),
+                        valid=valid,
+                    )
                 )
-                self.accountant_data.add_data(peer_inference_data)
+                # peer_inference_data = PeerInferenceSequenceData(
+                #     peer_id=peer_id,
+                #     span_start=span_start,
+                #     span_end=span_end,
+                #     accountant_tensor_sum=expected_outputs_tensor_sum,
+                #     tensor_sum=tensor_sum,
+                #     valid=valid,
+                # )
+                self.accountant_data.add_data(accountant_data_peer_params)
 
                 # rtol: relative tolerance at 1e-03 or as float 0.001
                 # atol: absolute tolerance at 8e-01 or as float 0.8
@@ -498,19 +399,58 @@ class InferenceValidator(threading.Thread):
                 # If both are None, then the behavior is equivalent to False.
                 return valid
             else:
-                peer_inference_data = PeerInferenceSequenceData(
+                logger.info(f"Inference data is None")
+                accountant_data_peer_params = AccountantDataPeerParams(
                     peer_id=peer_id,
-                    span_start=span_start,
-                    span_end=span_end,
-                    accountant_tensor_sum=0,
-                    tensor_sum=0,
-                    valid=False,
+                    data=PeerInferenceSequenceData(
+                        peer_id=peer_id,
+                        span_start=int(span_start),
+                        span_end=int(span_end),
+                        accountant_tensor_sum=float(0),
+                        tensor_sum=float(0),
+                        accountant_tensor=str(""),
+                        peer_tensor=str(""),
+                        valid=False,
+                    )
                 )
-                self.accountant_data.add_data(peer_inference_data)
+
+                # peer_inference_data = PeerInferenceSequenceData(
+                #     peer_id=peer_id,
+                #     span_start=span_start,
+                #     span_end=span_end,
+                #     accountant_tensor_sum=0,
+                #     tensor_sum=0,
+                #     valid=False,
+                # )
+                self.accountant_data.add_data(accountant_data_peer_params)
 
                 return False
         except Exception as e:
             logger.warning(f"Inference Validation Error: {e}")
+            accountant_data_peer_params = AccountantDataPeerParams(
+                peer_id=peer_id,
+                data=PeerInferenceSequenceData(
+                    peer_id=peer_id,
+                    span_start=int(span_start),
+                    span_end=int(span_end),
+                    accountant_tensor_sum=float(0),
+                    tensor_sum=float(0),
+                    accountant_tensor=str(""),
+                    peer_tensor=str(""),
+                    valid=False,
+                )
+            )
+
+            # peer_inference_data = PeerInferenceSequenceData(
+            #     peer_id=peer_id,
+            #     span_start=span_start,
+            #     span_end=span_end,
+            #     accountant_tensor_sum=0,
+            #     tensor_sum=0,
+            #     valid=False,
+            # )
+            self.accountant_data.add_data(accountant_data_peer_params)
+
             return False
 
         # Check if the output matches the expected output
@@ -526,7 +466,10 @@ class InferenceValidator(threading.Thread):
         return inference_data
 
     def initiate_dishonesty(self, peer_id):
-        # Propose the peer as dishonest on the blockchain
+        """
+        Propose the peer as dishonest on the blockchain
+            If already proposed, then vote
+        """
 
         # Check if proposal already exists
         proposal_exists = True 
@@ -549,7 +492,7 @@ class InferenceValidator(threading.Thread):
 
         print(f"Proposed dishonest peer {peer_id} with transaction hash: {tx_hash}")
 
-    def submit_data(self, data: str):
+    def submit_accountant_data(self, data: str):
         """
         Submit data to the blockchain if chosen accountant on the epoch.
 
@@ -562,15 +505,11 @@ class InferenceValidator(threading.Thread):
         #     data=data,
         # )
 
-
-    def recalibrate_blocks(self):
-        # Logic to recalibrate blocks to the most optimized state
-        print("Recalibrating blocks to the most optimized state")
-
     def update_peers(self):
         self.peers_data = []
         peers_data_list = get_peers_data_list()
         for peer in peers_data_list:
+            logger.info(f"update_peers peer_id: {peer['peer_id'] }")
             if peer['peer_id'] != self.my_peer_id:  # Exclude the validator from the peer list
                 self.peers_data.append(peer)
 
@@ -587,10 +526,28 @@ class InferenceValidator(threading.Thread):
     
     def _is_accountant(self) -> bool:
         """Check blockchain if self is the chosen accountant to submit inference validataion data for the epoch"""
-        return False
+        # accountant_account_id = get_epoch_accountant(
+        #     SubstrateConfig.interface, 
+        #     SubstrateConfig.keypair,
+        #     self.model_id
+        # )
+        # if accountant_account_id == SubstrateConfig.account_id:
+        #     self.is_accountant = True
+        # else:
+        #     self.is_accountant = False
+
+        return self.is_accountant
 
     def _get_epoch(self):
         """Do math to get epoch number from blockchain"""
+        # block_hash = SubstrateConfig.interface.get_block_hash()
+        # block_number = SubstrateConfig.interface.get_block_number(block_hash)
+        # network_config = load_network_config()
+        # min_required_model_consensus_submit_epochs = network_config.min_required_model_consensus_submit_epochs
+        # min_required_peer_consensus_submit_epochs = network_config.min_required_peer_consensus_submit_epochs
+        # min_model_peers = network_config.min_model_peers
+        # consensus_blocks_interval = network_config.consensus_blocks_interval
+
         return 1
 
     def _get_seconds_remaining_in_epoch(self) -> int:
@@ -600,24 +557,13 @@ class InferenceValidator(threading.Thread):
         This is used to wait until the next epoch to begin inference validation again
         """
         return 100
-
-
-@dataclasses.dataclass
-class PeerInferenceSequenceData:
-    """Class for storing node inferece and sequence data."""
-    peer_id: PeerID # Peer ID of node accountant is checking inference of
-    span_start: int # Start span of node accountant is checking inference of
-    span_end: int # End span of node accountant is checking inference of
-    accountant_tensor_sum: float # Tensor sum of the accountant performing inference validation
-    tensor_sum: float # Tensor sum of the node accountant is checking inference of
-    valid: bool # If accountant deems node checking inference of is valid
-
-class AccountantData:
-    def __init__(self):
-        self.data = []
-
-    def add_data(self, data: PeerInferenceSequenceData):
-        self.data.append(data)
-
-    def reset(self):
-        self.data = []
+    
+    def compare_accountant_data():
+        """
+        Compare the current accountant data to self
+        """
+        # accountant_data = get_previous_accountant_data(
+        #     SubstrateConfig.interface, 
+        #     SubstrateConfig.keypair,
+        #     self.model_id
+        # )

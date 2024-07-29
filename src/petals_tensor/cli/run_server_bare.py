@@ -1,10 +1,16 @@
 """
-python -m petals_tensor.cli.run_server_test petals-team/StableBeluga2 --public_ip 170.000.000.000 --tcp_public_ip 170.000.000.000 --port 30332 --tcp_port 8889 --num_blocks 5
+Make sure to update `.env` variables
+run run_update_network_config before run_server
+
+* decentrally and manually announce port and ip to other peers
+python -m petals_tensor.cli.run_server petals-team/StableBeluga2 --public_ip [ip] --port [port] --tcp_port [tcp_port]
+python -m petals_tensor.cli.run_server bigscience/bloom-560m --public_ip [ip] --port [port] --tcp_port [tcp_port]
 """
 import os
 import argparse
 import logging
 import time 
+
 import configargparse
 import torch
 from hivemind.proto.runtime_pb2 import CompressionType
@@ -13,8 +19,7 @@ from hivemind.utils.logging import get_logger
 from humanfriendly import parse_size
 
 from petals_tensor.constants import DTYPE_MAP, PUBLIC_INITIAL_PEERS
-from petals_tensor.server.server_test_2 import Server as ServerTest2
-
+from petals_tensor.server.server import Server
 from petals_tensor.utils.convert_block import QuantType
 from petals_tensor.utils.version import validate_version
 
@@ -55,7 +60,7 @@ def main():
                             'This is a simplified way to set the --announce_maddrs option (see below).'
                             'Default: server announces IPv4/IPv6 addresses of your network interfaces')
 
-    parser.add_argument('--tcp_public_ip', type=str, required=True,
+    parser.add_argument('--tcp_public_ip', type=str, required=False,
                         help='Your public IPv4 address, which is visible from the Internet. '
                              'This is a simplified way to set the --announce_maddrs option (see below).'
                              'This is also called by the blockchains offchain-worker alongside your port to ensure your server is returning valid data.'
@@ -260,7 +265,7 @@ def main():
         # Necessary to prevent the server from freezing after forks
         torch.set_num_threads(1)
 
-    server = ServerTest2(
+    server = Server(
         **args,
         host_maddrs=host_maddrs,
         announce_maddrs=announce_maddrs,
@@ -268,20 +273,14 @@ def main():
         max_disk_space=max_disk_space,
     )
 
-    """
-    Save peer_id in substrate config
-    """
     visible_maddrs_str = [str(a) for a in server.dht.get_visible_maddrs()]
     ipv4_peer = visible_maddrs_str[0]
     ipv4_peer_id = ipv4_peer.split('/')[-1]
 
     logger.info("visible_maddrs_str -> %s" % visible_maddrs_str)
-    logger.info("Saving model peer data to substrate config")
     logger.info("Peer ID ->      %s" % ipv4_peer_id)
     logger.info("Peer IP ->      %s" % tcp_public_ip)
     logger.info("Peer Port ->    %s" % tcp_port)
-
-    logger.info("running server and validator")
 
     try:
         server.run()

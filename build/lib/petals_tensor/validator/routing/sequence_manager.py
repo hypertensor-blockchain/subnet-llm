@@ -415,7 +415,8 @@ class RemoteSequenceManager:
             if current_index in (i['start'] for i in peers):
                 for span in candidate_spans:
                     for peer in peers:
-                        if current_index == peer['start']:
+                        """Match peer and span start parameter"""
+                        if current_index == peer['start'] and span.peer_id == peer['peer_id']:
                             logger.info(f"Found PeerId in make sequence {peer['peer_id']} - {span.start}:{span.end}")
                             # Update spans with customized sequence spans
                             span.start = peer['start']
@@ -434,6 +435,12 @@ class RemoteSequenceManager:
                     dtype=np.float64,
                 )
                 chosen_span = np.random.choice(candidate_spans, p=span_weights / span_weights.sum())
+
+                # Update start span to the current index
+                # Updating this overrides the peers span to initiate a customized sequence
+                # If the spans are [0:5, 5:80], and the second index node has a span of 0:80.
+                # this will override 0:5
+                # chosen_span.start = current_index
 
                 # If chosen_span is 15:30 but any of the submitted peers are in this range, update the end span
                 # to stop at the span before the found peers start span

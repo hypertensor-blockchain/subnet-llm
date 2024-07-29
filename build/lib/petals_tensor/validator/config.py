@@ -1,8 +1,9 @@
 import dataclasses
 import os
-from typing import Optional, Sequence, Union
+from typing import List, Optional, Sequence, Union
 
 from hivemind import PeerID
+import torch
 
 from petals_tensor.constants import PUBLIC_INITIAL_PEERS
 
@@ -34,3 +35,40 @@ class ClientConfig:
 
     max_pinged: int = 3  # max servers to ping from each sequence side, per update
     ping_timeout: float = 2  # max time to wait for pings, per update
+
+@dataclasses.dataclass
+class PeerInferenceSequenceData:
+    """Class for storing node inferece and sequence data."""
+    peer_id: PeerID # Peer ID of node accountant is checking inference of
+    span_start: int # Start span of node accountant is checking inference of
+    span_end: int # End span of node accountant is checking inference of
+    accountant_tensor_sum: float # Tensor sum of the accountant performing inference validation
+    tensor_sum: float # Tensor sum of the node accountant is checking inference of
+    accountant_tensor: str
+    peer_tensor: str
+    valid: bool # If accountant deems node checking inference of is valid
+
+@dataclasses.dataclass
+class AccountantDataPeerParams:
+    """Copy of struct from Hypertensor blockchain required format for accountants to submit data as"""
+    peer_id: PeerID
+    data: PeerInferenceSequenceData
+
+@dataclasses.dataclass
+class AccountantDataCompare:
+    """Interface for submitting proposal for dishonest accountant data comparison"""
+    accountant_data_id: int
+    accountant_data: List[AccountantDataPeerParams] # Parts of accountant data to propose as dishonest
+    proposer_data: List[AccountantDataPeerParams] # Parts of data to compare to accountant_data that should have been submitted
+
+"""Accountant data comprising of each peers inference data"""
+class AccountantData:
+    def __init__(self):
+        self.data = []
+        self.epoch = 0
+
+    def add_data(self, data: AccountantDataPeerParams):
+        self.data.append(data)
+
+    def reset(self):
+        self.data = []
