@@ -164,7 +164,7 @@ try:
   #   substrate, 
   #   keypair_1,
   #   0,
-  #   NetworkConfig.consensus_blocks_interval,
+  #   NetworkConfig.epoch_length,
   #   model_id,
   # )
 

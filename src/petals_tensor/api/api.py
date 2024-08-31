@@ -41,12 +41,9 @@ if __name__ == "__main__":
     PORT = model_validator_config.port
     server = socketserver.TCPServer(("0.0.0.0", PORT), Handler)
     socketserver.TCPServer.allow_reuse_address = True
-    print(f"Server started at {PORT}")
     server.serve_forever()
   except KeyboardInterrupt:
-    print("Caught KeyboardInterrupt, shutting down")
   finally:
-    print(f"Server shutting down")
     # server.shutdown()
     server.server_close()
 

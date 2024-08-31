@@ -57,6 +57,14 @@ class RemoteSequential(nn.Module):
         else:
             return self.active_session.step(inputs, prompts, **kwargs)
 
+    def forward_with_history(self, inputs: torch.Tensor, prompts: Optional[torch.Tensor] = None, **kwargs) -> torch.Tensor:
+        assert inputs.ndim == 3, "inputs must be a tensor of shape [batch_size, seq_length, hidden_size]"
+        if self.active_session is None:
+            assert all(v is None for v in kwargs.values()), f"Extra kwargs are not supported in forward: {kwargs}"
+            return _RemoteSequentialAutogradFunction.apply(inputs, prompts, self.sequence_manager)
+        else:
+            return self.active_session.step(inputs, prompts, **kwargs)
+
     @property
     def active_session(self) -> Optional[InferenceSession]:
         """
@@ -84,9 +92,18 @@ class RemoteSequential(nn.Module):
 
     @contextmanager
     def inference_session(self, **kwargs) -> InferenceSession:
-        # print("validator inference_session.py | self", self)
-        # print("validator inference_session.py | kwargs", kwargs)
+        """
+        Inside this context, forward() will use a _new_ InferenceSession created with given parameters.
 
+        :param max_length: Maximal expected length of inference results. Servers use this parameter
+                           to calculate the size of attention caches allocated to this client.
+        """
+
+        with InferenceSession(self.sequence_manager, **kwargs) as session, self.use_session(session):
+            yield session
+
+    @contextmanager
+    def inference_session_with_tensors(self, **kwargs) -> InferenceSession:
         """
         Inside this context, forward() will use a _new_ InferenceSession created with given parameters.
 

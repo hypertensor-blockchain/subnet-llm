@@ -36,30 +36,70 @@ class ClientConfig:
     max_pinged: int = 3  # max servers to ping from each sequence side, per update
     ping_timeout: float = 2  # max time to wait for pings, per update
 
+"""ACCOUNTANT CONFIG"""
+@dataclasses.dataclass
+class CustomInferenceSequence:
+    peer_id: PeerID
+    start: int
+    end: int
+
+@dataclasses.dataclass
+class AccountantConfig:
+    start_block: int                        # The start block to validate against
+    end_block: int                          # The end block to validate against
+    sequence: List[CustomInferenceSequence] # The custom sequence of nodes to validate
+
+"""BLOCKCHAIN CONFIG"""
 @dataclasses.dataclass
 class PeerInferenceSequenceData:
     """Class for storing node inferece and sequence data."""
-    peer_id: PeerID # Peer ID of node accountant is checking inference of
-    span_start: int # Start span of node accountant is checking inference of
-    span_end: int # End span of node accountant is checking inference of
+    position: int                # Position of sequence
     accountant_tensor_sum: float # Tensor sum of the accountant performing inference validation
-    tensor_sum: float # Tensor sum of the node accountant is checking inference of
-    accountant_tensor: str
-    peer_tensor: str
-    valid: bool # If accountant deems node checking inference of is valid
+    tensor_sum: float            # Tensor sum of the node accountant is checking inference of
+    valid: bool                  # Accountant data validation result of position
+
+@dataclasses.dataclass
+class PeerInferenceResults:
+    span_start: int              # Start span of node
+    span_end: int                # End span of node
+    data: List[PeerInferenceSequenceData]
+
+# @dataclasses.dataclass
+# class PeerInferenceSequenceData:
+#     """Class for storing node inferece and sequence data."""
+#     peer_id: PeerID              # Peer ID of node accountant is checking inference of
+#     position: int                # Position of sequence
+#     span_start: int              # Start span of node accountant is checking inference of
+#     span_end: int                # End span of node accountant is checking inference of
+#     accountant_tensor_sum: float # Tensor sum of the accountant performing inference validation
+#     tensor_sum: float            # Tensor sum of the node accountant is checking inference of
+#     valid: bool                  # If accountant deems node checking inference of is valid
+
+@dataclasses.dataclass
+class PeerValidationData:
+    """
+    input_tensor: Input tensor validating off of
+    a_tol: Absolute tolerance used in allclose
+    r_tol: Relative tolerance used in allclose
+    data: Inference sequence data of each position the peer was assigned
+    """
+    input_tensor: Union[torch.Tensor, None] # Input tensor validating of
+    a_tol: float
+    r_tol: float
+    data: List[PeerInferenceResults]        # Array of each sequence position
 
 @dataclasses.dataclass
 class AccountantDataPeerParams:
-    """Copy of struct from Hypertensor blockchain required format for accountants to submit data as"""
-    peer_id: PeerID
-    data: PeerInferenceSequenceData
+    """
+    Copy of struct from Hypertensor blockchain required format for accountants to submit data as
 
-@dataclasses.dataclass
-class AccountantDataCompare:
-    """Interface for submitting proposal for dishonest accountant data comparison"""
-    accountant_data_id: int
-    accountant_data: List[AccountantDataPeerParams] # Parts of accountant data to propose as dishonest
-    proposer_data: List[AccountantDataPeerParams] # Parts of data to compare to accountant_data that should have been submitted
+    peer_id: PeerID of peer inference validation results
+    valid: Accountant overall data validation results
+    data: Inference sequence data of each position the peer was assigned
+    """
+    peer_id: PeerID
+    valid: bool
+    data: List[PeerValidationData]
 
 """Accountant data comprising of each peers inference data"""
 class AccountantData:
@@ -72,3 +112,10 @@ class AccountantData:
 
     def reset(self):
         self.data = []
+
+@dataclasses.dataclass
+class AccountantDataCompare:
+    """Interface for submitting proposal for dishonest accountant data comparison"""
+    accountant_data_id: int                         # ID of the blockchains accountant data submission
+    accountant_data: List[AccountantDataPeerParams] # Parts of accountant data to propose as dishonest
+    proposer_data: List[AccountantDataPeerParams]   # Parts of data to compare to accountant_data that should have been submitted

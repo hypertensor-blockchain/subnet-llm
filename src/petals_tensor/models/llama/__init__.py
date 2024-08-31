@@ -1,4 +1,4 @@
-from petals_tensor.models.llama.block import WrappedLlamaBlock
+from petals_tensor.models.llama.block import WrappedLlamaBlock, WrappedLlamaBlockValidator
 from petals_tensor.models.llama.config import DistributedLlamaConfig
 from petals_tensor.models.llama.model import (
     DistributedLlamaForCausalLM,

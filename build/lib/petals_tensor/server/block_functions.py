@@ -37,6 +37,7 @@ async def run_rpc_forward(
     points: int = 0,
     args_structure: Any = None,
 ) -> torch.Tensor:
+    print("block_functions run_rpc_forward")
     """
     Run forward pass on deserialized inputs and prompts, used by rpc_forward and rpc_forward_stream
 
@@ -154,6 +155,7 @@ async def iterate_rpc_inference(
     quant_type: QuantType,
     args_structure: Any = None,
 ) -> AsyncIterator[Tuple[Sequence[runtime_pb2.Tensor], bool]]:
+    print("iterate_rpc_inference")
     assert len(cache_handles) == len(requested_backends)
 
     prefix_length = 0

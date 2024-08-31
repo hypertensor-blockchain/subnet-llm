@@ -34,12 +34,12 @@ class SubstrateConfig:
   """
   Fill in the `.env` file in the root directory with your mnemonic phrase
   """
-  url: str = DEV_URL  # url to substrate
-  interface: SubstrateInterface = SubstrateInterface(url=DEV_URL)
+  url: str = LOCAL_URL  # url to substrate
+  interface: SubstrateInterface = SubstrateInterface(url=LOCAL_URL)
   keypair: Keypair = Keypair.create_from_uri(PHRASE)
   account_id: str = Keypair.create_from_uri(PHRASE).ss58_address
 
-class ModelDataConfig:
+class SubnetDataConfig:
   """
   The data fills in when running `python -m petals.cli.run_server`
   """
@@ -50,38 +50,53 @@ class ModelDataConfig:
       cls._instance = super().__new__(cls)
     return cls._instance
 
-  def initialize(self, id: int, path: str, initialized: int):
+  def initialize(
+    self, 
+    activated: bool, 
+    id: int, 
+    path: str, 
+    min_nodes: int, 
+    target_nodes: int, 
+    memory_mb: int, 
+    initialized: int
+  ):
+    self.activated = activated
     self.id = id
     self.path = path
+    self.min_nodes = min_nodes
+    self.target_nodes = target_nodes
+    self.memory_mb = memory_mb
     self.initialized = initialized
 
-def save_model_config(data: ModelDataConfig):
+def save_subnet_config(data: SubnetDataConfig):
   """
   Save the model data configuration
 
   Args:
-    data (ModelDataConfig): The model data configuration
+    data (SubnetDataConfig): The model data configuration
   """
 
   dbfile = open('model_data_config', 'wb')
   pickle.dump(data, dbfile)                    
   dbfile.close()
 
-def load_model_config():
+def load_subnet_config():
   """
   Load the model data configuration
 
   Returns:
-    ModelDataConfig: The model data configuration
+    SubnetDataConfig: The model data configuration
   """
+  with open('model_data_config', 'rb') as dbfile:
+    db = pickle.load(dbfile)
+    return db
 
-  dbfile = open('model_data_config', 'rb')    
-  db = pickle.load(dbfile)
+  # dbfile = open('model_data_config', 'rb')    
+  # db = pickle.load(dbfile)
   
-  # for keys in db:
-  #   print(keys, '=>', db[keys])
-  dbfile.close()
-  return db
+  # # for keys in db:
+  # dbfile.close()
+  # return db
 
 class ModelValidatorConfig:
   """
@@ -132,10 +147,6 @@ def load_model_validator_config():
   with open('model_validator_config', 'rb') as dbfile:
     db = pickle.load(dbfile)
     return db
-  # dbfile = open('model_validator_config', 'rb')    
-  # db = pickle.load(dbfile)
-  # dbfile.close()
-  # return db
 
 class NetworkConfig:
   """
@@ -150,7 +161,7 @@ class NetworkConfig:
 
   def initialize(
     self,
-    consensus_blocks_interval: int,
+    epoch_length: int,
     min_required_model_consensus_submit_epochs: int,
     min_required_peer_consensus_submit_epochs: int,
     min_required_peer_consensus_inclusion_epochs: int,
@@ -163,7 +174,71 @@ class NetworkConfig:
     max_zero_consensus_epochs: int,
     remove_model_peer_epoch_percentage: float
   ):
-    self.consensus_blocks_interval = consensus_blocks_interval
+    self.epoch_length = epoch_length
+    self.min_required_model_consensus_submit_epochs = min_required_model_consensus_submit_epochs
+    self.min_required_peer_consensus_submit_epochs = min_required_peer_consensus_submit_epochs
+    self.min_required_peer_consensus_inclusion_epochs = min_required_peer_consensus_inclusion_epochs
+    self.min_model_peers = min_model_peers
+    self.max_model_peers = max_model_peers
+    self.max_models = max_models
+    self.tx_rate_limit = tx_rate_limit
+    self.min_stake_balance = min_stake_balance
+    self.maximum_outlier_delta_percent = maximum_outlier_delta_percent
+    self.max_zero_consensus_epochs = max_zero_consensus_epochs
+    self.remove_model_peer_epoch_percentage = remove_model_peer_epoch_percentage
+
+def save_network_config(data: NetworkConfig):
+  """
+  Save the network configuration
+
+  Args:
+    data (NetworkConfig): The network configuration
+  """
+
+  dbfile = open('network_config', 'wb')
+  pickle.dump(data, dbfile)                    
+  dbfile.close()
+
+def load_network_config():
+  """
+  Load the network configuration
+
+  Returns:
+    NetworkConfig: The network configuration
+  """
+
+  dbfile = open('network_config', 'rb')    
+  db = pickle.load(dbfile)
+  dbfile.close()
+  return db
+
+class NetworkRuntimeParameters:
+  """
+  Run `python -m petals.cli.run_update_network_config` to fill
+  """
+  _instance = None
+
+  def __new__(cls, *args, **kwargs):
+    if cls._instance is None:
+      cls._instance = super().__new__(cls)
+    return cls._instance
+
+  def initialize(
+    self,
+    epoch_length: int,
+    min_required_model_consensus_submit_epochs: int,
+    min_required_peer_consensus_submit_epochs: int,
+    min_required_peer_consensus_inclusion_epochs: int,
+    min_model_peers: int,
+    max_model_peers: int,
+    max_models: int,
+    tx_rate_limit: int,
+    min_stake_balance: int,
+    maximum_outlier_delta_percent: float,
+    max_zero_consensus_epochs: int,
+    remove_model_peer_epoch_percentage: float
+  ):
+    self.epoch_length = epoch_length
     self.min_required_model_consensus_submit_epochs = min_required_model_consensus_submit_epochs
     self.min_required_peer_consensus_submit_epochs = min_required_peer_consensus_submit_epochs
     self.min_required_peer_consensus_inclusion_epochs = min_required_peer_consensus_inclusion_epochs

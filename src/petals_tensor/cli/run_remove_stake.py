@@ -1,12 +1,12 @@
 """
 This should be ran after your node has successfully began hosting the machine learning models
 
-Before running add_model_peer() make sure your peer_id is shown when running `health.py`
+Before running add_subnet_net() make sure your peer_id is shown when running `health.py`
 
 It's important other peers are submitting your peer_id during peer consensus so the node 
 doesn't increment your peer_id out of consensus. Read documentation for more information
 
-python -m petals_tensor.cli.run_add_model_peer --id 1 --peer_id 12D3KooWGFuUunX1AzAzjs3CgyqTXtPWX3AqRhJFbesGPGYHJQTP --ip 127.0.0.1 --port 8888 --stake_to_be_added 1000
+python -m petals_tensor.cli.run_remove_stake --stake_to_be_removed 10000000000000000000000
 
 """
 import logging
@@ -28,7 +28,7 @@ def main():
     "Example: 10000000000000",
   )
 
-  model_config = substrate_config.load_model_config()
+  model_config = substrate_config.load_subnet_config()
   model_id = model_config.id
 
   args = parser.parse_args()
@@ -38,32 +38,30 @@ def main():
   """
   Ensure amount being removed won't go below minimum required stake balance towards a model
   """
+
+  logger.info("Your Account ID is %s" % substrate_config.SubstrateConfig.account_id)
+
   model_stake_balance = get_model_stake_balance(
     substrate_config.SubstrateConfig.interface,
+    int(model_id),
     substrate_config.SubstrateConfig.account_id
   )
 
-  network_config = substrate_config.load_network_config()
-
-  min_stake_balance = network_config.min_stake_balance
-  max_stake_to_be_removed = model_stake_balance - args.stake_to_be_removed
-  assert max_stake_to_be_removed >= min_stake_balance, "Invalid stake_to_be_removed - Must be less than %s" % max_stake_to_be_removed
+  logger.info("Your subnet stake balance %s" % model_stake_balance)
 
   block_header = substrate_config.SubstrateConfig.interface.get_block_header()
   block_number = block_header['header']['number']
 
-  in_consensus_steps = substrate_utils.is_in_consensus_steps(
-    block_number,
-    network_config.consensus_blocks_interval, 
-  )
+  stake_to_be_removed = args.stake_to_be_removed
 
-  assert in_consensus_steps == False, "Cannot add model peer while blockchain is running consensus steps. Wait 2 blocks"
+  if int(str(model_stake_balance)) < args.stake_to_be_removed:
+     stake_to_be_removed = int(str(model_stake_balance))
 
   remove_stake_receipt = remove_stake(
     substrate_config.SubstrateConfig.interface,
     substrate_config.SubstrateConfig.keypair,
-    model_id,
-    args.stake_to_be_removed,
+    int(model_id),
+    stake_to_be_removed,
   )
 
   if remove_stake_receipt.is_success:

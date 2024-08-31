@@ -3,11 +3,113 @@ from substrateinterface.exceptions import SubstrateRequestException
 from tenacity import retry, stop_after_attempt, wait_exponential
 # from petals.substrate.utils import save_last_submit_consensus_block, save_last_unconfirm_consensus_block
 
+def validate(
+  substrate: SubstrateInterface,
+  keypair: Keypair,
+  subnet_id: int,
+  data
+):
+  """
+  Submit consensus data on each epoch with no conditionals
+
+  It is up to prior functions to decide whether to call this function
+
+  :param substrate: interface to blockchain
+  :param keypair: keypair of extrinsic caller. Must be a peer in the model
+  :param consensus_data: an array of data containing all AccountIds, PeerIds, and scores per model hoster
+
+  Note: It's important before calling this to ensure the entrinsic will be successful.
+        If the function reverts, the extrinsic is Pays::Yes
+  """
+  # compose call
+  call = substrate.compose_call(
+    call_module='Network',
+    call_function='validate',
+    call_params={
+      'subnet_id': subnet_id,
+      'data': data
+    }
+  )
+
+  # create signed extrinsic
+  extrinsic = substrate.create_signed_extrinsic(call=call, keypair=keypair)
+
+  """
+  submit extrinsic
+  This will retry up to 4 times when except is returned
+  """
+  @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
+  def submit_extrinsic():
+    try:
+      receipt = substrate.submit_extrinsic(extrinsic, wait_for_inclusion=True)
+      if receipt.is_success:
+        print('✅ Success, triggered events:')
+        for event in receipt.triggered_events:
+          print(f'* {event.value}')
+      else:
+        print('⚠️ Extrinsic Failed: ', receipt.error_message)
+      return receipt
+    except SubstrateRequestException as e:
+      print("Failed to send: {}".format(e))
+
+  return submit_extrinsic()
+
+def attest(
+  substrate: SubstrateInterface,
+  keypair: Keypair,
+  subnet_id: int
+):
+  """
+  Submit consensus data on each epoch with no conditionals
+
+  It is up to prior functions to decide whether to call this function
+
+  :param substrate: interface to blockchain
+  :param keypair: keypair of extrinsic caller. Must be a peer in the model
+  :param consensus_data: an array of data containing all AccountIds, PeerIds, and scores per model hoster
+
+  Note: It's important before calling this to ensure the entrinsic will be successful.
+        If the function reverts, the extrinsic is Pays::Yes
+  """
+  print("submitting consensus data...")
+
+  # compose call
+  call = substrate.compose_call(
+    call_module='Network',
+    call_function='attest',
+    call_params={
+      'subnet_id': subnet_id,
+    }
+  )
+
+  # create signed extrinsic
+  extrinsic = substrate.create_signed_extrinsic(call=call, keypair=keypair)
+
+  """
+  submit extrinsic (this is gasless unless it reverts)
+  This will retry up to 4 times when except is returned
+  """
+  @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
+  def submit_extrinsic():
+    try:
+      receipt = substrate.submit_extrinsic(extrinsic, wait_for_inclusion=True)
+      if receipt.is_success:
+        print('✅ Success, triggered events:')
+        for event in receipt.triggered_events:
+          print(f'* {event.value}')
+      else:
+        print('⚠️ Extrinsic Failed: ', receipt.error_message)
+      return receipt
+    except SubstrateRequestException as e:
+      print("Failed to send: {}".format(e))
+
+  return submit_extrinsic()
+
 def submit_consensus_data(
   substrate: SubstrateInterface,
   keypair: Keypair,
   block: int,
-  model_id: int,
+  subnet_id: int,
   consensus_data
 ):
   """
@@ -29,7 +131,7 @@ def submit_consensus_data(
     call_module='Network',
     call_function='submit_consensus_data',
     call_params={
-      'model_id': model_id,
+      'subnet_id': subnet_id,
       'consensus_data': consensus_data
     }
   )
@@ -61,7 +163,7 @@ def unconfirm_consensus_data(
   substrate: SubstrateInterface,
   keypair: Keypair,
   block: int,
-  model_id: int,
+  subnet_id: int,
 ):
   """
   Submit consensus data on each epoch with no conditionals
@@ -81,7 +183,7 @@ def unconfirm_consensus_data(
     call_module='Network',
     call_function='unconfirm_consensus_data',
     call_params={
-      'model_id': model_id,
+      'subnet_id': subnet_id,
     }
   )
 
@@ -109,10 +211,10 @@ def unconfirm_consensus_data(
 
   return submit_extrinsic()
 
-def add_model(
+def remove_subnet(
   substrate: SubstrateInterface,
   keypair: Keypair,
-  model_path: str,
+  subnet_id: str,
 ) -> ExtrinsicReceipt:
   """
   Add model validator as model peer to blockchain storage
@@ -124,9 +226,9 @@ def add_model(
   # compose call
   call = substrate.compose_call(
     call_module='Network',
-    call_function='add_model',
+    call_function='remove_subnet',
     call_params={
-      'model_path': model_path,
+      'subnet_id': subnet_id,
     }
   )
 
@@ -156,7 +258,7 @@ def add_model(
 def vote_model_peer_dishonest(
   substrate: SubstrateInterface,
   keypair: Keypair,
-  model_id: int,
+  subnet_id: int,
   peer_id: str,
 ):
   """
@@ -170,7 +272,7 @@ def vote_model_peer_dishonest(
 
   :param substrate: interface to blockchain
   :param keypair: keypair of extrinsic caller. Must be a peer in the model
-  :param model_id: model ID
+  :param subnet_id: model ID
   :param peer_id: peer ID of the dishonest peer
 
   Note: It's important before calling this to ensure the entrinsic will be successful.
@@ -180,7 +282,7 @@ def vote_model_peer_dishonest(
     call_module='Network',
     call_function='vote_model_peer_dishonest',
     call_params={
-      'model_id': model_id,
+      'subnet_id': subnet_id,
       'peer_id': peer_id
     }
   )
@@ -210,7 +312,7 @@ def vote_model_peer_dishonest(
 
 def get_model_peers(
   substrate: SubstrateInterface,
-  model_id: int,
+  subnet_id: int,
 ):
   """
   Function to return all account_ids and peer_ids from the substrate Hypertensor Blockchain
@@ -222,9 +324,9 @@ def get_model_peers(
   def make_rpc_request():
     try:
       model_peers_data = substrate.rpc_request(
-        method='network_getModelPeers',
+        method='network_getSubnetNodes',
         params=[
-          model_id
+          subnet_id
         ]
       )
       return model_peers_data
@@ -235,7 +337,7 @@ def get_model_peers(
 
 def get_model_peers_included(
   substrate: SubstrateInterface,
-  model_id: int,
+  subnet_id: int,
 ):
   """
   Function to return all account_ids and peer_ids from the substrate Hypertensor Blockchain
@@ -247,10 +349,8 @@ def get_model_peers_included(
   def make_rpc_request():
     try:
       model_peers_data = substrate.rpc_request(
-        method='network_getModelPeersIncluded',
-        params=[
-          model_id
-        ]
+        method='network_getSubnetNodesIncluded',
+        params=[subnet_id]
       )
       return model_peers_data
     except SubstrateRequestException as e:
@@ -260,7 +360,7 @@ def get_model_peers_included(
 
 def get_model_peers_submittable(
   substrate: SubstrateInterface,
-  model_id: int,
+  subnet_id: int,
 ):
   """
   Function to return all account_ids and peer_ids from the substrate Hypertensor Blockchain
@@ -272,9 +372,9 @@ def get_model_peers_submittable(
   def make_rpc_request():
     try:
       model_peers_data = substrate.rpc_request(
-        method='network_getModelPeersSubmittable',
+        method='network_getSubnetNodesSubmittable',
         params=[
-          model_id
+          subnet_id
         ]
       )
       return model_peers_data
@@ -285,7 +385,7 @@ def get_model_peers_submittable(
 
 async def get_model_peers_model_unconfirmed_count(
   substrate: SubstrateInterface,
-  model_id: int,
+  subnet_id: int,
 ):
   """
   Function to return all account_ids and peer_ids from the substrate Hypertensor Blockchain
@@ -297,9 +397,9 @@ async def get_model_peers_model_unconfirmed_count(
   def make_rpc_request():
     try:
       model_peers_data = substrate.rpc_request(
-        method='network_getModelPeersModelUnconfirmedCount',
+        method='network_getSubnetNodesUnconfirmedCount',
         params=[
-          model_id
+          subnet_id
         ]
       )
       return model_peers_data
@@ -308,13 +408,65 @@ async def get_model_peers_model_unconfirmed_count(
 
   return make_rpc_request()
 
-def add_model_peer(
+async def get_consensus_data(
+  substrate: SubstrateInterface,
+  subnet_id: int,
+  epoch: int
+):
+  """
+  Function to return all account_ids and peer_ids from the substrate Hypertensor Blockchain
+
+  :param SubstrateInterface: substrate interface from blockchain url
+  :returns: model_peers_data
+  """
+  @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
+  def make_rpc_request():
+    try:
+      model_peers_data = substrate.rpc_request(
+        method='network_getConsensusData',
+        params=[
+          subnet_id,
+          epoch
+        ]
+      )
+      return model_peers_data
+    except SubstrateRequestException as e:
+      print("Failed to get rpc request: {}".format(e))
+
+  return make_rpc_request()
+
+async def get_accountant_data(
+  substrate: SubstrateInterface,
+  subnet_id: int,
+  id: int
+):
+  """
+  Function to return all account_ids and peer_ids from the substrate Hypertensor Blockchain
+
+  :param SubstrateInterface: substrate interface from blockchain url
+  :returns: model_peers_data
+  """
+  @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
+  def make_rpc_request():
+    try:
+      model_peers_data = substrate.rpc_request(
+        method='network_getAccountantData',
+        params=[
+          subnet_id,
+          id
+        ]
+      )
+      return model_peers_data
+    except SubstrateRequestException as e:
+      print("Failed to get rpc request: {}".format(e))
+
+  return make_rpc_request()
+
+def add_subnet_node(
   substrate: SubstrateInterface,
   keypair: Keypair,
-  model_id: int,
+  subnet_id: int,
   peer_id: str,
-  ip: str,
-  port: int,
   stake_to_be_added: int,
 ) -> ExtrinsicReceipt:
   """
@@ -327,12 +479,10 @@ def add_model_peer(
   # compose call
   call = substrate.compose_call(
     call_module='Network',
-    call_function='add_model_peer',
+    call_function='add_subnet_node',
     call_params={
-      'model_id': model_id,
+      'subnet_id': subnet_id,
       'peer_id': peer_id,
-      'ip': ip,
-      'port': port,
       'stake_to_be_added': stake_to_be_added,
     }
   )
@@ -362,7 +512,7 @@ def add_model_peer(
 def update_model_peer(
   substrate: SubstrateInterface,
   keypair: Keypair,
-  model_id: int,
+  subnet_id: int,
   peer_id: str,
 ) -> ExtrinsicReceipt:
   """
@@ -372,7 +522,7 @@ def update_model_peer(
 
   :param substrate: interface to blockchain
   :param keypair: keypair of extrinsic caller. Must be a peer in the model
-  :param model_id: model ID
+  :param subnet_id: model ID
   :param peer_id: new peer_id
   """
 
@@ -381,7 +531,7 @@ def update_model_peer(
     call_module='Network',
     call_function='update_model_peer',
     call_params={
-      'model_id': model_id,
+      'subnet_id': subnet_id,
       'peer_id': peer_id,
     }
   )
@@ -406,10 +556,10 @@ def update_model_peer(
 
   return submit_extrinsic()
 
-def remove_model_peer(
+def remove_subnet_node(
   substrate: SubstrateInterface,
   keypair: Keypair,
-  model_id: int,
+  subnet_id: int,
 ):
   """
   Remove stake balance towards specified model
@@ -424,9 +574,9 @@ def remove_model_peer(
   # compose call
   call = substrate.compose_call(
     call_module='Network',
-    call_function='remove_model_peer',
+    call_function='remove_subnet_node',
     call_params={
-      'model_id': model_id,
+      'subnet_id': subnet_id,
     }
   )
 
@@ -455,7 +605,7 @@ def remove_model_peer(
 def update_port(
   substrate: SubstrateInterface,
   keypair: Keypair,
-  model_id: int,
+  subnet_id: int,
   port: int,
 ):
   """
@@ -471,7 +621,7 @@ def update_port(
     call_module='Network',
     call_function='update_port',
     call_params={
-      'model_id': model_id,
+      'subnet_id': subnet_id,
       'port': port,
     }
   )
@@ -501,7 +651,7 @@ def update_port(
 def add_to_stake(
   substrate: SubstrateInterface,
   keypair: Keypair,
-  model_id: int,
+  subnet_id: int,
   stake_to_be_added: int,
 ):
   """
@@ -517,7 +667,7 @@ def add_to_stake(
     call_module='Network',
     call_function='add_to_stake',
     call_params={
-      'model_id': model_id,
+      'subnet_id': subnet_id,
       'stake_to_be_added': stake_to_be_added,
     }
   )
@@ -547,7 +697,7 @@ def add_to_stake(
 def remove_stake(
   substrate: SubstrateInterface,
   keypair: Keypair,
-  model_id: int,
+  subnet_id: int,
   stake_to_be_removed: int,
 ):
   """
@@ -564,9 +714,9 @@ def remove_stake(
   # compose call
   call = substrate.compose_call(
     call_module='Network',
-    call_function='add_to_stake',
+    call_function='remove_stake',
     call_params={
-      'model_id': model_id,
+      'subnet_id': subnet_id,
       'stake_to_be_removed': stake_to_be_removed,
     }
   )
@@ -616,7 +766,7 @@ def get_balance(
 
 def get_model_stake_balance(
   substrate: SubstrateInterface,
-  model_id: int,
+  subnet_id: int,
   address: str
 ):
   """
@@ -629,8 +779,9 @@ def get_model_stake_balance(
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def make_query():
     try:
-      result = substrate.query('Network', 'AccountModelStake', [model_id, address])
-      return result.value['data']
+      result = substrate.query('Network', 'AccountSubnetStake', [address, subnet_id])
+      print("get_model_stake_balance: ", result)
+      return result
     except SubstrateRequestException as e:
       print("Failed to get rpc request: {}".format(e))
 
@@ -638,7 +789,7 @@ def get_model_stake_balance(
 
 def get_model_peer_account(
   substrate: SubstrateInterface,
-  model_id: int,
+  subnet_id: int,
   peer_id: str
 ):
   """
@@ -646,12 +797,12 @@ def get_model_peer_account(
 
   :param SubstrateInterface: substrate interface from blockchain url
   :param peer_id: peer_id of model validator
-  :returns: account_id of model_id => peer_id
+  :returns: account_id of subnet_id => peer_id
   """
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def make_query():
     try:
-      result = substrate.query('Network', 'ModelPeerAccount', [model_id, peer_id])
+      result = substrate.query('Network', 'SubnetNodeAccount', [subnet_id, peer_id])
       return result
     except SubstrateRequestException as e:
       print("Failed to get rpc request: {}".format(e))
@@ -660,18 +811,18 @@ def get_model_peer_account(
 
 def get_model_accounts(
   substrate: SubstrateInterface,
-  model_id: int,
+  subnet_id: int,
 ):
   """
   Function to account_id of model hosting peer
 
   :param SubstrateInterface: substrate interface from blockchain url
-  :returns: account_id's of model_id
+  :returns: account_id's of subnet_id
   """
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def make_query():
     try:
-      result = substrate.query('Network', 'ModelAccount', [model_id])
+      result = substrate.query('Network', 'SubnetAccount', [subnet_id])
       return result
     except SubstrateRequestException as e:
       print("Failed to get rpc request: {}".format(e))
@@ -687,12 +838,12 @@ def get_model_path_id(
 
   :param SubstrateInterface: substrate interface from blockchain url
   :param path: path of model
-  :returns: model_id
+  :returns: subnet_id
   """
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def make_query():
     try:
-      result = substrate.query('Network', 'ModelPaths', [path])
+      result = substrate.query('Network', 'SubnetPaths', [path])
       return result
     except SubstrateRequestException as e:
       print("Failed to get rpc request: {}".format(e))
@@ -708,12 +859,12 @@ def get_model_data(
 
   :param SubstrateInterface: substrate interface from blockchain url
   :param id: id of model
-  :returns: model_id
+  :returns: subnet_id
   """
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def make_query():
     try:
-      result = substrate.query('Network', 'ModelsData', [id])
+      result = substrate.query('Network', 'SubnetsData', [id])
       return result
     except SubstrateRequestException as e:
       print("Failed to get rpc request: {}".format(e))
@@ -731,7 +882,7 @@ def get_max_models(substrate: SubstrateInterface):
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def make_query():
     try:
-      result = substrate.query('Network', 'MaxModels')
+      result = substrate.query('Network', 'MaxSubnets')
       return result
     except SubstrateRequestException as e:
       print("Failed to get rpc request: {}".format(e))
@@ -749,7 +900,7 @@ def get_min_model_peers(substrate: SubstrateInterface):
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def make_query():
     try:
-      result = substrate.query('Network', 'MinModelPeers')
+      result = substrate.query('Network', 'MinSubnetNodes')
       return result
     except SubstrateRequestException as e:
       print("Failed to get rpc request: {}".format(e))
@@ -767,7 +918,7 @@ def get_max_model_peers(substrate: SubstrateInterface):
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def make_query():
     try:
-      result = substrate.query('Network', 'MaxModelPeers')
+      result = substrate.query('Network', 'MaxSubnetNodes')
       return result
     except SubstrateRequestException as e:
       print("Failed to get rpc request: {}".format(e))
@@ -821,7 +972,7 @@ def get_max_model_consensus_epochs(substrate: SubstrateInterface):
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def make_query():
     try:
-      result = substrate.query('Network', 'MaxModelConsensusEpochsErrors')
+      result = substrate.query('Network', 'MaxSubnetConsensusEpochsErrors')
       return result
     except SubstrateRequestException as e:
       print("Failed to get rpc request: {}".format(e))
@@ -839,7 +990,7 @@ def get_min_required_model_consensus_submit_epochs(substrate: SubstrateInterface
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def make_query():
     try:
-      result = substrate.query('Network', 'MinRequiredModelConsensusSubmitEpochs')
+      result = substrate.query('Network', 'MinRequiredSubnetConsensusSubmitEpochs')
       return result
     except SubstrateRequestException as e:
       print("Failed to get rpc request: {}".format(e))
@@ -857,12 +1008,30 @@ def get_min_required_peer_consensus_submit_epochs(substrate: SubstrateInterface)
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def make_query():
     try:
-      result = substrate.query('Network', 'MinRequiredPeerConsensusSubmitEpochs')
+      result = substrate.query('Network', 'SubnetNodeClassEpochs', ['Submittable'])
       return result
     except SubstrateRequestException as e:
       print("Failed to get rpc request: {}".format(e))
 
   return make_query()
+
+# def get_min_required_peer_consensus_submit_epochs(substrate: SubstrateInterface):
+#   """
+#   Function to get the minimum number of epochs required to submit peer consensus
+
+#   :param SubstrateInterface: substrate interface from blockchain url
+#   :returns: min_required_peer_consensus_submit_epochs
+#   """
+
+#   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
+#   def make_query():
+#     try:
+#       result = substrate.query('Network', 'MinRequiredPeerConsensusSubmitEpochs')
+#       return result
+#     except SubstrateRequestException as e:
+#       print("Failed to get rpc request: {}".format(e))
+
+#   return make_query()
 
 def get_min_required_peer_consensus_inclusion_epochs(substrate: SubstrateInterface):
   """
@@ -875,12 +1044,99 @@ def get_min_required_peer_consensus_inclusion_epochs(substrate: SubstrateInterfa
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def make_query():
     try:
-      result = substrate.query('Network', 'MinRequiredPeerConsensusInclusionEpochs')
+      result = substrate.query('Network', 'SubnetNodeClassEpochs', ['Included'])
       return result
     except SubstrateRequestException as e:
       print("Failed to get rpc request: {}".format(e))
 
   return make_query()
+
+def get_idles(substrate: SubstrateInterface, subnet_id: int):
+  """
+  Get list of all accounts eligible for consensus inclusion
+
+  :param SubstrateInterface: substrate interface from blockchain url
+  """
+
+  @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
+  def make_query():
+    try:
+      result = substrate.query('Network', 'SubnetNodesClasses', [subnet_id, 'Idle'])
+      return result
+    except SubstrateRequestException as e:
+      print("Failed to get rpc request: {}".format(e))
+
+  return make_query()
+
+def get_included(substrate: SubstrateInterface, subnet_id: int):
+  """
+  Get list of all accounts eligible for consensus inclusion
+
+  :param SubstrateInterface: substrate interface from blockchain url
+  """
+
+  @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
+  def make_query():
+    try:
+      result = substrate.query('Network', 'SubnetNodesClasses', [subnet_id, 'Included'])
+      return result
+    except SubstrateRequestException as e:
+      print("Failed to get rpc request: {}".format(e))
+
+  return make_query()
+
+def get_submittables(substrate: SubstrateInterface, subnet_id: int):
+  print('get_submittables')
+  """
+  Get list of all accounts eligible for consensus submissions
+
+  :param SubstrateInterface: substrate interface from blockchain url
+  """
+
+  @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
+  def make_query():
+    try:
+      result = substrate.query('Network', 'SubnetNodesClasses', [subnet_id, 'Submittable'])
+      return result
+    except SubstrateRequestException as e:
+      print("Failed to get rpc request: {}".format(e))
+
+  return make_query()
+
+def get_accountants(substrate: SubstrateInterface, subnet_id: int):
+  """
+  Get list of all accounts eligible for accountant submissions
+
+  :param SubstrateInterface: substrate interface from blockchain url
+  """
+
+  @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
+  def make_query():
+    try:
+      result = substrate.query('Network', 'SubnetNodesClasses', [subnet_id, 'Accountant'])
+      return result
+    except SubstrateRequestException as e:
+      print("Failed to get rpc request: {}".format(e))
+
+  return make_query()
+
+# def get_min_required_peer_consensus_inclusion_epochs(substrate: SubstrateInterface):
+#   """
+#   Function to get the minimum number of epochs required to include peer consensus
+
+#   :param SubstrateInterface: substrate interface from blockchain url
+#   :returns: min_required_peer_consensus_inclusion_epochs
+#   """
+
+#   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
+#   def make_query():
+#     try:
+#       result = substrate.query('Network', 'MinRequiredPeerConsensusInclusionEpochs')
+#       return result
+#     except SubstrateRequestException as e:
+#       print("Failed to get rpc request: {}".format(e))
+
+#   return make_query()
 
 def get_maximum_outlier_delta_percent(substrate: SubstrateInterface):
   """
@@ -911,27 +1167,90 @@ def get_remove_model_peer_epoch_percentage(substrate: SubstrateInterface):
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def make_query():
     try:
-      result = substrate.query('Network', 'RemoveModelPeerEpochPercentage')
+      result = substrate.query('Network', 'RemoveSubnetNodeEpochPercentage')
       return result
     except SubstrateRequestException as e:
       print("Failed to get rpc request: {}".format(e))
 
   return make_query()
 
-def get_consensus_blocks_interval(substrate: SubstrateInterface):
+def get_model_activated(substrate: SubstrateInterface, path: str):
   """
-  Function to get the consensus blocks interval
+  Function to get the maximum number of peers allowed to host a model
 
   :param SubstrateInterface: substrate interface from blockchain url
-  :returns: consensus_blocks_interval
+  :returns: max_model_peers
   """
 
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def make_query():
     try:
-      result = substrate.query('Network', 'ConsensusBlocksInterval')
+      result = substrate.query('Network', 'SubnetActivated', [path])
       return result
     except SubstrateRequestException as e:
       print("Failed to get rpc request: {}".format(e))
 
   return make_query()
+
+def get_epoch_length(substrate: SubstrateInterface):
+  """
+  Function to get the epoch length as blocks per epoch
+
+  :param SubstrateInterface: substrate interface from blockchain url
+  :returns: epoch_length
+  """
+
+  @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
+  def make_query():
+    try:
+      result = substrate.get_constant('Network', 'EpochLength')
+      return result
+    except SubstrateRequestException as e:
+      print("Failed to get rpc request: {}".format(e))
+
+  return make_query()
+
+def get_rewards_validator(
+  substrate: SubstrateInterface,
+  subnet_id: int,
+  epoch: int
+):
+  """
+  Function to get the consensus blocks interval
+
+  :param SubstrateInterface: substrate interface from blockchain url
+  :returns: epoch_length
+  """
+
+  @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
+  def make_query():
+    try:
+      result = substrate.query('Network', 'SubnetRewardsValidator', [subnet_id, epoch])
+      return result
+    except SubstrateRequestException as e:
+      print("Failed to get rpc request: {}".format(e))
+
+  return make_query()
+
+def get_rewards_submission(
+  substrate: SubstrateInterface,
+  subnet_id: int,
+  epoch: int
+):
+  """
+  Function to get the consensus blocks interval
+
+  :param SubstrateInterface: substrate interface from blockchain url
+  :returns: epoch_length
+  """
+
+  @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
+  def make_query():
+    try:
+      result = substrate.query('Network', 'SubnetRewardsSubmission', [subnet_id, epoch])
+      return result
+    except SubstrateRequestException as e:
+      print("Failed to get rpc request: {}".format(e))
+
+  return make_query()
+

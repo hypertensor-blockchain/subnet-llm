@@ -62,7 +62,7 @@ def main():
   args = parser.parse_args()
 
   # """
-  # Checking if model_id exists on blockchain is done during add_model_peer
+  # Checking if model_id exists on blockchain is done during add_subnet_node
   # Here we check if its a possible model_id
   # """
   # assert args.id >= 1, "Model invalid - Must be greater than 0"
@@ -79,7 +79,7 @@ def main():
   # assert validate_peer_id(args.peer_id), "PeerId invalid - Must be correct format"
 
   """Load model data saved in `run_server` CLI"""
-  model_config = substrate_config.load_model_config()
+  model_config = substrate_config.load_subnet_config()
   model_id = model_config.id
 
   """Load network data saved in `run_update_network_config` CLI"""
@@ -90,14 +90,14 @@ def main():
 
   _can_remove_or_update_model_peer = substrate_utils.can_remove_or_update_model_peer(
     block_number,
-    network_config.consensus_blocks_interval, 
+    network_config.epoch_length, 
   )
 
   assert _can_remove_or_update_model_peer == True, "Cannot update model peer while blockchain is accepting consensus data."
 
   """
   Peer data is previously saved before storing on the blockchain
-  After successfully running `add_model_peer` in Hypertensor we store the new `initialized` at the end
+  After successfully running `add_subnet_node` in Hypertensor we store the new `initialized` at the end
   """
   model_validator_config = substrate_config.load_model_validator_config()
 

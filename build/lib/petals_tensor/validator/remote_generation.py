@@ -90,12 +90,6 @@ class RemoteGenerationMixin(_SkipTokensMixin):
         **kwargs
     ):
         self._fix_generate_kwargs(kwargs)
-        # print("validator remote_generation.py | generate 88")
-
-        # print("validator remote_generation.py | inputs", inputs)
-        # print("validator remote_generation.py | *args", str(args))
-        # print("validator remote_generation.py | session", session)
-        # print("validator remote_generation.py | **kwargs", str(kwargs))
 
         if inputs is None:
             inputs = kwargs.pop("input_ids", None)
@@ -129,7 +123,6 @@ class RemoteGenerationMixin(_SkipTokensMixin):
         with context_manager as session:
             # Prepend the tokens from the previous .generate() call
             n_prev_tokens = session.output_ids.shape[1] if session.output_ids is not None else 0
-            print("n_prev_tokens", n_prev_tokens)
             if n_prev_tokens > 0:
                 if kwargs.get("num_beams", 1) > 1:
                     logger.warning(
@@ -142,7 +135,6 @@ class RemoteGenerationMixin(_SkipTokensMixin):
                 else:
                     inputs = session.output_ids
 
-                print("inputs", inputs)
 
                 # Don't actually run all previous tokens through the transformer,
                 # but keep them for transformers.GenerationMixin (e.g., to compute repetition_penalty)
@@ -153,54 +145,105 @@ class RemoteGenerationMixin(_SkipTokensMixin):
                 past_key_values.update_seen(session.position)
                 kwargs["past_key_values"] = past_key_values
 
-                print("past_key_values", past_key_values)
 
             result = super().generate(inputs, *args, **kwargs)
-            print("result = super().generate", result)
 
             sequences = result.sequences if isinstance(result, ModelOutput) else result
-            print("sequences 0 -> ", sequences)
             # Save tokens from this .generate() call
             session.output_ids = sequences
             # Crop the last tokens from the previous call
             sequences = sequences[:, n_prev_tokens:].clone()
-            print("sequences 1 -> ", sequences)
             if isinstance(result, ModelOutput):
                 result.sequences = sequences
             else:
                 result = sequences
 
 
-            # print("session.inference_session_data -> ", session.inference_session_data, "\n\n\n")
-
-            # pprint.pp(session.inference_session_data, depth=1)
-            # pprint.pp(session.inference_session_data)
-            print("session.inference_session_data -> ", "\n\n\n")
-
-            # pprint.pprint(session.inference_session_data, depth=1)
             pprint.pprint(session.inference_session_data)
 
-            # for server_session in session._server_sessions:
-            #     # span = session.span
-            #     _inputs_queue = session._inputs_queue
-            #     _outputs_stream = session._outputs_stream
-            #     session_id = session.session_id
-            #     # print("span", span)
-            #     print("_inputs_queue", _inputs_queue)
-            #     print("_outputs_stream", _outputs_stream)
-            #     print("session_id", session_id)
+        return session.inference_session_data, result
 
-            # for sequence_manager in session._sequence_manager:
-            #     block_uids = sequence_manager.state.sequence_info.block_uids
-            #     block_infos = sequence_manager.state.sequence_info.block_infos
-            #     spans_by_priority = sequence_manager.state.sequence_info.spans_by_priority
-            #     spans_containing_block = sequence_manager.state.sequence_info.spans_containing_block
-            #     last_updated_time = sequence_manager.state.sequence_info.last_updated_time
-            #     print("block_uids", block_uids)
-            #     print("block_infos", block_infos)
-            #     print("spans_by_priority", spans_by_priority)
-            #     print("spans_containing_block", spans_containing_block)
-            #     print("last_updated_time", last_updated_time)
+    @docstring_from(transformers.GenerationMixin.generate.__doc__)
+    def generate_with_tensors(
+        self, 
+        inputs: Optional[torch.Tensor] = None, 
+        *args, 
+        session: Optional[InferenceSession] = None, 
+        **kwargs
+    ):
+        self._fix_generate_kwargs(kwargs)
+
+        if inputs is None:
+            inputs = kwargs.pop("input_ids", None)
+
+        if session is not None:
+            # If a session specified explicitly, use it
+            context_manager = self.use_session(session)
+        elif self.active_session is not None:
+            # If there's an active session, don't do anything
+            context_manager = contextlib.nullcontext(self.active_session)
+        else:
+            # If there's no active session, create a new one
+
+            max_length = kwargs.get("max_length")
+            max_new_tokens = kwargs.get("max_new_tokens")
+            assert (max_length is None) != (
+                max_new_tokens is None
+            ), "You should set `max_length` or `max_new_tokens` (but not both) to reserve server-side attention caches"
+            
+            peer_ids = kwargs.pop("peer_ids", None)
+            peer_id = kwargs.pop("peer_id", None)
+            peers = kwargs.pop("peers", None)
+            tensors = kwargs.pop("tensors", None)
+
+            session_max_length = self.transformer.config.pre_seq_len
+            if max_length is not None:
+                session_max_length += max_length
+            else:
+                session_max_length += (inputs.shape[1] if inputs is not None else 0) + max_new_tokens
+            context_manager = self.inference_session(
+                max_length=session_max_length, 
+                peer_ids=peer_ids, 
+                peer_id=peer_id, 
+                peers=peers,
+                tensors=tensors
+            )
+
+        with context_manager as session:
+            # Prepend the tokens from the previous .generate() call
+            n_prev_tokens = session.output_ids.shape[1] if session.output_ids is not None else 0
+            if n_prev_tokens > 0:
+                if kwargs.get("num_beams", 1) > 1:
+                    logger.warning(
+                        "Beam search will not work properly in the resumed petals.InferenceSession "
+                        "since intermediate beam entries are lost"
+                    )
+
+                if inputs is not None:
+                    inputs = torch.cat([session.output_ids, inputs], dim=1)
+                else:
+                    inputs = session.output_ids
+
+                # Don't actually run all previous tokens through the transformer,
+                # but keep them for transformers.GenerationMixin (e.g., to compute repetition_penalty)
+                _skipped_tokens.set(max(0, n_prev_tokens - 1))
+
+            if self._supports_cache_class and "past_key_values" not in kwargs:
+                past_key_values = RemotePastKeyValues()
+                past_key_values.update_seen(session.position)
+                kwargs["past_key_values"] = past_key_values
+
+            result = super().generate(inputs, *args, **kwargs)
+
+            sequences = result.sequences if isinstance(result, ModelOutput) else result
+            # Save tokens from this .generate() call
+            session.output_ids = sequences
+            # Crop the last tokens from the previous call
+            sequences = sequences[:, n_prev_tokens:].clone()
+            if isinstance(result, ModelOutput):
+                result.sequences = sequences
+            else:
+                result = sequences
 
         return session.inference_session_data, result
 

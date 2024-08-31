@@ -23,7 +23,7 @@ from transformers import PretrainedConfig
 
 import petals_tensor
 from petals_tensor.constants import DTYPE_MAP, PUBLIC_INITIAL_PEERS
-from petals_tensor.data_structures import CHAIN_DELIMITER, UID_DELIMITER, ModelInfo, ServerInfo, ServerState, parse_uid
+from petals_tensor.data_structures import CHAIN_DELIMITER, UID_DELIMITER, ModelInfo, NodeStatus, ServerInfo, ServerState, parse_uid
 from petals_tensor.server import block_selection
 from petals_tensor.server.backend import TransformerBackend, merge_inference_pools_inplace
 from petals_tensor.server.block_utils import get_block_size, resolve_block_dtype
@@ -93,6 +93,7 @@ class Server:
         use_relay: bool = True,
         use_auto_relay: bool = True,
         adapters: Sequence[str] = (),
+        signature: str = None,
         **kwargs,
     ):
         """Create a server with one or more bloom blocks. See run_server.py for documentation."""
@@ -138,9 +139,7 @@ class Server:
             for block_index in range(self.block_config.num_hidden_layers)
         ]
 
-        print("self.block_config.num_hidden_layers", self.block_config.num_hidden_layers)
-
-        
+        self.signature = signature
         # logger.info(f"module_uids {self.module_uids}")
 
         if reachable_via_relay is None:
@@ -154,6 +153,7 @@ class Server:
             use_relay=use_relay,
             use_auto_relay=use_auto_relay,
             client_mode=reachable_via_relay,
+            # signature=self.signature,
             **kwargs,
         )
         self.reachability_protocol = ReachabilityProtocol.attach_to_dht(self.dht) if not reachable_via_relay else None
@@ -280,6 +280,9 @@ class Server:
 
         self.module_container = None
         self.inference_validator = None
+
+        # self.node_status = NodeStatus(peer_id=self.dht.peer_id)
+        
         self.stop = threading.Event()
 
     def _choose_num_blocks(self) -> int:
@@ -448,44 +451,32 @@ class Server:
         return block_selection.should_choose_other_blocks(self.dht.peer_id, module_infos, self.balance_quality)
 
     def _should_choose_strict_blocks(self) -> bool:
-        print("_should_choose_strict_blocks")
         # Must update strict_block_indices for this to be true
         if self.strict_block_indices is None:
             return False
         
-        print("self.strict_block_indices", self.strict_block_indices)
+        # # TODO: should this be `+ 1` or current_end_block `- 1`?
+        # # For whatever reason petals uses 0 for the module container but not for server_info? 
+        # # TODO: Validate this to be true
+        # strict_end_block = self.strict_block_indices[-1] + 1
 
-        server_info = self.module_container.server_info
-        current_start_block = server_info.start_block
-        current_end_block = server_info.end_block
-        print("current_start_block", current_start_block)
-        print("current_end_block", current_end_block)
+        # Check if the strict blocks are already within the current range
+        # If they are, then do nothing
+        # range_overlap = set((range(strict_start_block,strict_end_block))).issubset(range(current_start_block,current_end_block))
+        range_overlap = self.do_strict_blocks_overlap()
 
-        strict_start_block = self.strict_block_indices[0]
-        # strict_end_block = self.strict_block_indices[-1]
-
-        # TODO: should this be `+ 1` or current_end_block `- 1`?
-        # For whatever reason petals uses 0 for the module container but not for server_info? 
-        # TODO: Validate this to be true
-        strict_end_block = self.strict_block_indices[-1] + 1
-        print("strict_start_block", strict_start_block)
-        print("strict_end_block", strict_end_block)
-
-        return current_start_block != strict_start_block or current_end_block != strict_end_block
+        return not range_overlap
+        # return current_start_block != strict_start_block or current_end_block != strict_end_block
 
     def update_strict_block_indices(self, block_indices: str):
-        print("update_strict_block_indices")
         try:
             start_block, end_block = [int(index.strip()) for index in block_indices.split(":")]
         except Exception as e:
             raise ValueError(f"Failed to parse `--block_indices {block_indices}`, must be start:end (e.g. 0:18)")
 
-        print("start_block", start_block)
-        print("end_block", end_block)
 
         block_indices = range(start_block, end_block)
         num_blocks = len(block_indices)
-        print("num_blocks", num_blocks)
 
         self.strict_block_indices, self.num_blocks = block_indices, num_blocks
 
@@ -493,18 +484,31 @@ class Server:
         gib = 1024**3
         logger.info(f"Attention cache for all blocks will consume up to {self.attn_cache_bytes / gib:.2f} GiB")
 
+    def do_strict_blocks_overlap(self) -> bool:
+        if self.strict_block_indices is None:
+            return False
+
+        server_info = self.module_container.server_info
+        # Current
+        current_start_block = server_info.start_block
+        current_end_block = server_info.end_block
+
+        # Strict
+        strict_start_block = self.strict_block_indices[0]
+        strict_end_block = self.strict_block_indices[-1] + 1
+
+        range_overlap = set((range(strict_start_block,strict_end_block))).issubset(range(current_start_block,current_end_block))
+
+        return range_overlap
+
     def remove_strict_block_indices(self):
-        print("remove_strict_block_indices")
         self.strict_block_indices = None
 
     def shutdown(self, timeout: Optional[float] = 5):
-        print("shutdown server")
         self.stop.set()
         if self.module_container is not None and self.module_container.is_alive():
             self.module_container.join(timeout)
 
-        print("self.inference_validator is not None", self.inference_validator is not None)
-        print("self.inference_validator.is_alive()", self.inference_validator.is_alive())
         if self.inference_validator is not None and self.inference_validator.is_alive():
             self.inference_validator.shutdown()
 
@@ -720,11 +724,9 @@ class ModuleContainer(threading.Thread):
         >>> container.ready.wait(timeout=10)
         >>> print("Container ready" if container.ready.is_set() else "Container didn't start in 10 seconds")
         """
-        print("ModuleContainer ready")
         return self.runtime.ready  # mp.Event that is true if self is ready to process batches
 
     def is_healthy(self) -> bool:
-        print("ModuleContainer is_healthy")
         return all(handler.is_alive() for handler in self.conn_handlers) and all(
             pool.is_alive() for pool in self.runtime.pools
         )

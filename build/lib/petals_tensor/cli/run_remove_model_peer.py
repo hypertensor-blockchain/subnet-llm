@@ -1,11 +1,4 @@
 """
-This should be ran after your node has successfully began hosting the machine learning models
-
-Before running add_model_peer() make sure your peer_id is shown when running `health.py`
-
-It's important other peers are submitting your peer_id during peer consensus so the node 
-doesn't increment your peer_id out of consensus. Read documentation for more information
-
 python -m petals_tensor.cli.run_add_model_peer --id 1 --peer_id 12D3KooWGFuUunX1AzAzjs3CgyqTXtPWX3AqRhJFbesGPGYHJQTP --ip 127.0.0.1 --port 8888 --stake_to_be_added 1000
 python -m petals_tensor.cli.run_add_model_peer --stake_to_be_added 1000
 
@@ -19,7 +12,7 @@ from petals_tensor.substrate import utils as substrate_utils
 logger = logging.getLogger(__name__)
 
 def main():
-  model_config = substrate_config.load_model_config()
+  model_config = substrate_config.load_subnet_config()
   model_id = model_config.id
 
   block_header = substrate_config.SubstrateConfig.interface.get_block_header()
@@ -29,14 +22,13 @@ def main():
 
   can_remove_or_update_model_peer = substrate_utils.can_remove_or_update_model_peer(
     block_number,
-    network_config.consensus_blocks_interval, 
+    network_config.epoch_length, 
   )
 
   assert can_remove_or_update_model_peer == True, "Cannot remove model peer while blockchain is running consensus block spans."
 
   """
   Peer data is previously saved before storing on the blockchain
-  After successfully running `add_model_peer` in Hypertensor we store the new `initialized` at the end
   """
   model_validator_config = substrate_config.load_model_validator_config()
 

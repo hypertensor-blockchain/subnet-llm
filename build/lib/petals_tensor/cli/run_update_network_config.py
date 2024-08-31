@@ -7,13 +7,13 @@ python -m petals_tensor.cli.run_update_network_config
 """
 import logging
 from petals_tensor.substrate import config as substrate_config
-from petals_tensor.substrate.chain_functions import get_consensus_blocks_interval, get_max_model_peers, get_max_models, get_max_model_consensus_epochs, get_maximum_outlier_delta_percent, get_min_model_peers, get_min_required_model_consensus_submit_epochs, get_min_required_peer_consensus_inclusion_epochs, get_min_required_peer_consensus_submit_epochs, get_min_stake_balance, get_remove_model_peer_epoch_percentage, get_tx_rate_limit
+from petals_tensor.substrate.chain_functions import get_epoch_length, get_max_model_peers, get_max_models, get_max_model_consensus_epochs, get_maximum_outlier_delta_percent, get_min_model_peers, get_min_required_model_consensus_submit_epochs, get_min_required_peer_consensus_inclusion_epochs, get_min_required_peer_consensus_submit_epochs, get_min_stake_balance, get_remove_model_peer_epoch_percentage, get_tx_rate_limit
 
 logger = logging.getLogger(__name__)
 
 def main():
-  consensus_blocks_interval = get_consensus_blocks_interval(substrate_config.SubstrateConfig.interface)
-  print("consensus_blocks_interval", consensus_blocks_interval)
+  epoch_length = get_epoch_length(substrate_config.SubstrateConfig.interface)
+  print("epoch_length", epoch_length)
   min_required_model_consensus_submit_epochs = get_min_required_model_consensus_submit_epochs(substrate_config.SubstrateConfig.interface)
   print("min_required_model_consensus_submit_epochs", min_required_model_consensus_submit_epochs)
   min_required_peer_consensus_submit_epochs = get_min_required_peer_consensus_submit_epochs(substrate_config.SubstrateConfig.interface)
@@ -43,7 +43,7 @@ def main():
   network_config = substrate_config.NetworkConfig()
 
   network_config.initialize(
-    int(str(consensus_blocks_interval)),
+    int(str(epoch_length)),
     int(str(min_required_model_consensus_submit_epochs)),
     int(str(min_required_peer_consensus_submit_epochs)),
     int(str(min_required_peer_consensus_inclusion_epochs)),

@@ -11,17 +11,17 @@ from petals_tensor.substrate import config as substrate_config
 logger = logging.getLogger(__name__)
 
 def main():
-  model_config = substrate_config.load_model_config()
+  model_config = substrate_config.load_subnet_config()
   model_config.initialize(
     1,
     "this is it",
     400
   )
-  substrate_config.save_model_config(model_config)
+  substrate_config.save_subnet_config(model_config)
 
-  logger.info("Model ID Saved ->            %s" % substrate_config.ModelDataConfig().id)
-  logger.info("Model Path Saved ->          %s" % substrate_config.ModelDataConfig().path)
-  logger.info("Model Initialized Saved ->   %s" % substrate_config.ModelDataConfig().initialized)
+  logger.info("Model ID Saved ->            %s" % substrate_config.SubnetDataConfig().id)
+  logger.info("Model Path Saved ->          %s" % substrate_config.SubnetDataConfig().path)
+  logger.info("Model Initialized Saved ->   %s" % substrate_config.SubnetDataConfig().initialized)
 
   network_config = substrate_config.NetworkConfig()
   network_config.initialize(
@@ -43,7 +43,7 @@ def main():
   """
   substrate_config.save_network_config(network_config)
   print("saved")
-  logger.info("consensus_blocks_interval -> %s" % substrate_config.NetworkConfig().consensus_blocks_interval)
+  logger.info("epoch_length -> %s" % substrate_config.NetworkConfig().epoch_length)
 
 if __name__ == "__main__":
     main()

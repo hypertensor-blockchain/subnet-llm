@@ -273,3 +273,29 @@ class AccountantDataParams:
       decoded_list.append(accountant_data_params)
 
     return decoded_list
+
+@dataclass
+class AccountIdList:
+  """
+  Dataclass for AccountId lists
+  """
+  @classmethod
+  def list_from_vec_u8(cls, vec_u8: List[int]) -> List["AccountIdList"]:
+    """Returns a list of AccountIdList objects from a ``vec_u8``."""
+    """The data is arbitrary so we don't count on a struct"""
+
+    decoded_list: List[AccountIdList] = []
+
+    # Convert arbitrary data to str
+    list_of_ord_values = ''.join(chr(i) for i in vec_u8)
+
+    # Replace ' to " for json
+    list_of_ord_values = list_of_ord_values.replace("\'", "\"")
+
+    json_obj = json.loads(list_of_ord_values)
+
+    for x in json_obj:
+      accountant_data_params = AccountIdList(*x)
+      decoded_list.append(accountant_data_params)
+
+    return decoded_list

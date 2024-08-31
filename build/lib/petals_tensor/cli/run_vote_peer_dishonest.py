@@ -27,7 +27,7 @@ def main():
   args = parser.parse_args()
 
   """Load model data saved in `run_server` CLI"""
-  model_config = substrate_config.load_model_config()
+  model_config = substrate_config.load_subnet_config()
   model_id = model_config.id
   model_path = model_config.path
 

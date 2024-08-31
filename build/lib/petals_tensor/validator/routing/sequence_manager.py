@@ -76,7 +76,6 @@ class RemoteSequenceManager:
         dht: Optional[DHT] = None,
         state: Optional[SequenceManagerState] = None,
     ):
-        print("RemoteSequenceManager init")
         assert config.initial_peers or dht is not None, "Please specify `config.initial_peers` or `dht`"
         assert config.dht_prefix, "Could not find dht_prefix in config, please create model with dht_prefix=..."
         assert len(block_uids) > 0, "Sequences must contain at least one block"
@@ -89,7 +88,8 @@ class RemoteSequenceManager:
         if dht is None:
             dht = DHT(
                 initial_peers=config.initial_peers,
-                client_mode=True,
+                # client_mode=True,
+                client_mode=False,
                 num_workers=32,
                 startup_timeout=config.daemon_startup_timeout,
                 start=True,
@@ -143,14 +143,9 @@ class RemoteSequenceManager:
         *,
         mode: str,
         cache_tokens_needed: Optional[int] = None,
-        # peer_ids: Optional[List[str]] = None,
         peers: Optional[List[Dict]] = None,
         peer_id: Optional[str] = None,
     ) -> List[RemoteSpanInfo]:
-        print("validator make_sequence")
-        print("validator make_sequence start_index", start_index)
-        print("validator make_sequence end_index", end_index)
-
         """
         Form a sequence of remote servers that collectively serve all consecutive layers
 
@@ -179,13 +174,11 @@ class RemoteSequenceManager:
                 raise RuntimeError(f"PeerID is none with mode `specific_peer`")
             span_sequence = self._make_sequence_with_specific_peer(peer_id, start_index, end_index)
         elif mode == "specific_peers":
-            logger.info(f"Mode is specific_peer")
-            # if peer_ids is None:
-            #     raise RuntimeError(f"PeerID is none with mode `specific_peer`")
-            # span_sequence = self._make_sequence_with_specific_peers(peer_ids, start_index, end_index)
+            logger.info(f"Mode is specific_peers")
             if peers is None:
-                raise RuntimeError(f"PeerID is none with mode `specific_peer`")
-            span_sequence = self._make_sequence_with_specific_peers(peers, start_index, end_index)
+                raise RuntimeError(f"peers is none with mode `specific_peer`")
+            # span_sequence = self._make_sequence_with_specific_peers(peers, start_index, end_index)
+            span_sequence = self._make_sequence_with_specific_peers_single_blocks(peers, start_index, end_index)
         else:
             raise RuntimeError(f"Unexpected mode {mode}")
 
@@ -323,17 +316,12 @@ class RemoteSequenceManager:
 
     def _make_sequence_with_max_throughput(self, start_index: int, end_index: int) -> List[RemoteSpanInfo]:
         client_server_rtts = self.ping_aggregator.to_dict()
-        # print("client_server_rtts ->", client_server_rtts)
-
         span_sequence = []
         current_index = start_index
         while current_index < end_index:
-            # print("current_index end_index", current_index, end_index)
             candidate_spans = self.state.sequence_info.spans_containing_block[current_index]
             if not candidate_spans:
                 raise MissingBlocksError(current_index)
-
-            # print("candidate_spans", candidate_spans)
 
             # We choose longer servers to minimize the number of hops but leave some randomization
             # to distribute the load. We also exclude servers known to be unreachable.
@@ -342,7 +330,6 @@ class RemoteSequenceManager:
                 [span.length if client_server_rtts.get(span.peer_id) != np.inf else eps for span in candidate_spans],
                 dtype=np.float64,
             )
-            # print("span_weights ->", span_weights)
 
             chosen_span = np.random.choice(candidate_spans, p=span_weights / span_weights.sum())
 
@@ -353,18 +340,13 @@ class RemoteSequenceManager:
 
     def _make_sequence_with_specific_peer(self, peer_id: str, start_index: int, end_index: int) -> List[RemoteSpanInfo]:
         client_server_rtts = self.ping_aggregator.to_dict()
-        # print("client_server_rtts ->", client_server_rtts)
-        # print("start_index ->", start_index)
 
         span_sequence = []
         current_index = start_index
         while current_index < end_index:
-            # print("current_index end_index", current_index, end_index)
             candidate_spans = self.state.sequence_info.spans_containing_block[current_index]
             if not candidate_spans:
                 raise MissingBlocksError(current_index)
-
-            # print("candidate_spans", candidate_spans)
             
             if any(span.peer_id == peer_id for span in candidate_spans):
                 logger.info(f"Found PeerId in sequence {peer_id}")
@@ -440,7 +422,7 @@ class RemoteSequenceManager:
                 # Updating this overrides the peers span to initiate a customized sequence
                 # If the spans are [0:5, 5:80], and the second index node has a span of 0:80.
                 # this will override 0:5
-                # chosen_span.start = current_index
+                chosen_span.start = current_index
 
                 # If chosen_span is 15:30 but any of the submitted peers are in this range, update the end span
                 # to stop at the span before the found peers start span
@@ -451,12 +433,6 @@ class RemoteSequenceManager:
                             logger.info(f"Found PeerId in make sequence range, updating span end from {chosen_span.end} to {span.end}")
                             chosen_span.end = peer['start']
                             break
-
-
-
-            print("chosen_span.start", chosen_span.start)
-            print("current_index", current_index)
-            print("chosen_span.end", chosen_span.end)
 
             logger.info(f"chosen_span {chosen_span}")
 
@@ -469,88 +445,71 @@ class RemoteSequenceManager:
             chosen_span.start = chosen_span.server_info.start_block
             chosen_span.end = chosen_span.server_info.end_block
         return span_sequence
+    
+    def _make_sequence_with_specific_peers_single_blocks(
+        self, 
+        peers: List[Dict], 
+        start_index: int, 
+        end_index: int
+    ) -> List[RemoteSpanInfo]:
+        """
+        :param peers: Peers data {peer_id, start, end} in ascending order from start:end range, i.e. 0:1, 1:2, 4:5, etc.
+        :param start_index: start index of model
+        :param end_index: end index of model
 
-    # def _make_sequence_with_specific_peers(
-    #     self, 
-    #     peers: List[Dict], 
-    #     start_index: int, 
-    #     end_index: int
-    # ) -> List[RemoteSpanInfo]:
-    #     client_server_rtts = self.ping_aggregator.to_dict()
+        This only checks start block and forces the end block to be start+1
+        """
+        client_server_rtts = self.ping_aggregator.to_dict()
 
-    #     print("_make_sequence_with_specific_peers start_index", start_index)
-    #     print("_make_sequence_with_specific_peers end_index", end_index)
-        
-    #     span_sequence = []
-    #     current_index = start_index
-    #     while current_index < end_index:
-    #         candidate_spans = self.state.sequence_info.spans_containing_block[current_index]
-    #         if not candidate_spans:
-    #             raise MissingBlocksError(current_index)
+        span_sequence = []
+        current_index = start_index
+        while current_index < end_index:
+            candidate_spans = self.state.sequence_info.spans_containing_block[current_index]
+            if not candidate_spans:
+                raise MissingBlocksError(current_index)
 
-    #         # This is a simple version of what this needs to be
-    #         # This only works correctly is one peer is entered into the function
-    #         # This only fits in peers, not based on a customized sequence
-    #         peer_exists = any(span.peer_id in (i['peer_id'] for i in peers) for span in candidate_spans)
-    #         if peer_exists:
-    #             chosen_peer = None
-    #             for span in candidate_spans:
-    #                 for peer in peers:
-    #                     if span.peer_id == peer['peer_id']:
-    #                         logger.info(f"Found PeerId in sequence {peer['peer_id']}")
-    #                         logger.info(f"Found PeerId span.end {span.end}")
+            # Peers must be sent in sequence order
+            if current_index in (i['start'] for i in peers):
+                for span in candidate_spans:
+                    for peer in peers:
+                        """Match peer and span start parameter"""
+                        if current_index == peer['start'] and span.peer_id == peer['peer_id']:
+                            logger.info(f"Found PeerId in make sequence {peer['peer_id']} - {span.start}:{span.end}")
+                            # Update spans with customized sequence spans
+                            span.start = peer['start']
+                            span.end = peer['start'] + 1
+                            chosen_peer = span
+                            # Include peer in sequence and remove peer from peer_ids
+                            peers.remove(peer)
+                            break
+                chosen_span = chosen_peer
+            else:
+                # We choose longer servers to minimize the number of hops but leave some randomization
+                # to distribute the load. We also exclude servers known to be unreachable.
+                eps = 1e-6
+                span_weights = np.array(
+                    [span.length if client_server_rtts.get(span.peer_id) != np.inf else eps for span in candidate_spans],
+                    dtype=np.float64,
+                )
+                chosen_span = np.random.choice(candidate_spans, p=span_weights / span_weights.sum())
 
-    #                         if current_index != peer['start']:
-    #                             logger.info("current_index != peer['start']")
-    #                             eps = 1e-6
-    #                             span_weights = np.array(
-    #                                 [span.length if client_server_rtts.get(span.peer_id) != np.inf else eps for span in candidate_spans],
-    #                                 dtype=np.float64,
-    #                             )
-    #                             chosen_peer = np.random.choice(candidate_spans, p=span_weights / span_weights.sum())
-    #                             # Update sequence to be up to the peers so they are chosen next
-    #                             # chosen_peer.end = peer['start'] - 1
-    #                         else:
-    #                             logger.info("current_index == peer['start']")
-    #                             span.start = peer['start']
-    #                             span.end = peer['end']
-    #                             chosen_peer = span
-    #                             # Include peer in sequence and remove peer from peer_ids
-    #                             peers.remove(peer)
-    #                         break
+                # Update start span to the current index and end span to one increment above the start span
+                chosen_span.start = current_index
+                chosen_span.end = current_index + 1
 
-    #                 # for peer_id in peer_ids:
-    #                 #     if span.peer_id == peer_id:
-    #                 #         logger.info(f"Found PeerId in sequence {peer_id}")
-    #                 #         logger.info(f"Found PeerId span.end {span.end}")
-    #                 #         span.end = 2
-    #                 #         peer = span
-    #                 #         # Include peer in sequence and remove peer from peer_ids
-    #                 #         peer_ids.remove(peer_id)
-    #                 #         break
+            logger.info(f"chosen_span {chosen_span}")
 
-    #             chosen_span = chosen_peer
-    #         else:
-    #             # We choose longer servers to minimize the number of hops but leave some randomization
-    #             # to distribute the load. We also exclude servers known to be unreachable.
-    #             eps = 1e-6
-    #             span_weights = np.array(
-    #                 [span.length if client_server_rtts.get(span.peer_id) != np.inf else eps for span in candidate_spans],
-    #                 dtype=np.float64,
-    #             )
-    #             chosen_span = np.random.choice(candidate_spans, p=span_weights / span_weights.sum())
+            assert chosen_span.start <= current_index < chosen_span.end
+            # Push the peer into the sequence
+            span_sequence.append(dataclasses.replace(chosen_span, start=current_index))
 
-    #         print("chosen_span.start", chosen_span.start)
-    #         print("current_index", current_index)
-    #         print("chosen_span.end", chosen_span.end)
+            # Increment one
+            current_index += 1
 
-    #         assert chosen_span.start <= current_index < chosen_span.end
-    #         logger.info(f"chosen_span {chosen_span}")
-    #         span_sequence.append(dataclasses.replace(chosen_span, start=current_index))
-
-    #         """Original"""
-    #         current_index = chosen_span.end
-    #     return span_sequence
+            # Update the sequence after appending the data back to its original for future sequence creation
+            chosen_span.start = chosen_span.server_info.start_block
+            chosen_span.end = chosen_span.server_info.end_block
+        return span_sequence
 
     def __getitem__(self, ix: Union[int, slice]) -> RemoteSequenceManager:
         """Get a RemoteSequenceManager for a sub-sequence of blocks"""

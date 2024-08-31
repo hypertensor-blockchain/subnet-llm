@@ -1,27 +1,57 @@
 """
 This should be ran after your node has successfully began hosting the machine learning models
 
-Before running add_model_peer() make sure your peer_id is shown when running `health.py`
+Make sure to update `.env` variables
 
-It's important other peers are submitting your peer_id during peer consensus so the node 
-doesn't increment your peer_id out of consensus. Read documentation for more information
+run python -m petals_tensor.cli.run_update_network_config before run_server
 
-python -m petals_tensor.cli.run_add_model_peer_test --id 1 --peer_id 12D3KooWGFuUunX1AzAzjs3CgyqTXtPWX3AqRhJFbesGPGYHJQTP --ip 127.0.0.1 --port 8888 --stake_to_be_added 1000
-python -m petals_tensor.cli.run_add_model_peer_test --stake_to_be_added 1000
-
+python -m petals_tensor.cli.run_add_subnet_node --path bigscience/bloom-560m --stake_to_be_added 1000000000000000000000
 """
 import logging
 import argparse
 from petals_tensor.health.state_updater import get_peer_ids_list
 from petals_tensor.substrate import config as substrate_config
 import re
-from petals_tensor.substrate.chain_functions import add_model_peer, get_balance, get_model_peer_account
+from petals_tensor.substrate.chain_functions import add_subnet_node, get_balance, get_model_peer_account
 from petals_tensor.substrate import utils as substrate_utils
 
 logger = logging.getLogger(__name__)
 
+"""
+This is one layer of defense and doesn't gauarantee checking if a peer_id is valid
+"""
+def validate_peer_id(peer_id):
+  peer_id_len = len(peer_id)
+  if peer_id_len < 32 or peer_id_len > 128:
+    return False
+  
+  first_char = peer_id[0]
+  second_char = peer_id[1]
+  
+  if first_char == "1":
+    return True
+  elif first_char == "Q" and second_char == "m":
+    return True
+  elif first_char == "f" or first_char == "b" or first_char == "z" or first_char == "m":
+    return True
+  else:
+    return False
+
+def validate_ip(ip):
+  # Make a regular expression
+  # for validating an Ip-address
+  regex = "^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])$"
+  if(re.search(regex, ip)): 
+    print("Valid ip address")
+    return True
+  else: 
+    print("Invalid ip address")
+    return False
+
+
 def main():
   parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+  parser.add_argument('--path', required=True, nargs='?', type=str, help="path or name of a pretrained model, converted with cli/convert_model.py")
   parser.add_argument(
     "--stake_to_be_added",
     type=int, 
@@ -30,44 +60,40 @@ def main():
     help="The integer balance of TENSOR to be staked towards the model. Must be greater than or equal to minumum required stake balance. "
     "Example: 1000",
   )
+  parser.add_argument(
+    "--subscribe",
+    type=bool, 
+    required=False,
+    default=False,
+    help="Begin subscribing to blocks. This is used to submit consensus data. This can be done manually"
+  )
 
   args = parser.parse_args()
 
-  model_config = substrate_config.load_model_config()
+  """Load model data saved from `run_server` CLI"""
+  model_config = substrate_config.load_subnet_config()
   model_id = model_config.id
 
+  print("model_id      ", model_id)
+
+  """Load network data saved from `run_update_network_config` CLI"""
   network_config = substrate_config.load_network_config()
 
-  """Ensure stake_to_be_added is greater than or equal to minimum required stake balance"""
   min_stake_balance = network_config.min_stake_balance
   
+  """Ensure stake_to_be_added is greater than or equal to minimum required stake balance"""
   assert args.stake_to_be_added >= min_stake_balance, "Invalid stake_to_be_added - Must be greater than %s" % min_stake_balance
+
+  subscribe = args.subscribe
 
   block_header = substrate_config.SubstrateConfig.interface.get_block_header()
   block_number = block_header['header']['number']
 
-  in_consensus_steps = substrate_utils.is_in_consensus_steps(
-    block_number,
-    network_config.consensus_blocks_interval, 
-  )
-
-  assert in_consensus_steps == False, "Cannot add model peer while blockchain is running consensus steps. Wait 2 blocks"
-
   """
   Peer data is previously saved before storing on the blockchain
-  After successfully running `add_model_peer` in Hypertensor we store the new `initialized` at the end
+  After successfully running `add_subnet_node` in Hypertensor we store the new `initialized` at the end
   """
   model_validator_config = substrate_config.load_model_validator_config()
-
-  model_validator_config = substrate_config.ModelValidatorConfig()
-
-  """Initialize mock peer data"""
-  model_validator_config.initialize(
-    "QmYyQSo1c1Ym7orWxLYvCrM2EmxFTANf8wXmmE7DWjhx5N51",
-    "172.20.00.000",
-    8888,
-    0
-  )
 
   peer_id = model_validator_config.peer_id 
   ip = model_validator_config.ip 
@@ -79,7 +105,17 @@ def main():
   print("port         ", port)
   print("initialized  ", initialized)
 
-  assert initialized == 0, "Peer already initialized into storage."
+  assert initialized == 0, "Peer already initialized into storage. If this is a mistake remove the `model_validator_config` pickle file."
+
+  peer_ids_list = get_peer_ids_list()
+  print(peer_ids_list)
+  peer_exists = False
+  for peer in peer_ids_list:
+    if peer_id == peer:
+      peer_exists = True
+      break
+
+  assert peer_exists, "PeerId not hosting models. If this is a mistake, wait a few minutes."
 
   """
   Ensure there is no account using peer_id
@@ -87,10 +123,13 @@ def main():
   """
   model_peer_account = get_model_peer_account(
     substrate_config.SubstrateConfig.interface,
+    model_id,
     peer_id
   )
 
-  assert model_peer_account == "5C4hrfjw9DjXZTzV3MwzrrAr9P1MJhSrvWGWqi1eSuyUpnhM", "PeerId already stored on blockchain"
+  logger.info('Your AccountId is %s', substrate_config.SubstrateConfig.account_id)
+
+  assert model_peer_account == "5C4hrfjw9DjXZTzV3MwzrrAr9P1MJhSrvWGWqi1eSuyUpnhM", "PeerId already stored on blockchain. If this is a mistake remove the `model_validator_config` pickle file."
 
   logger.info('Getting account balance to ensure account can stake `stake_to_be_added`...')
 
@@ -99,15 +138,26 @@ def main():
     substrate_config.SubstrateConfig.account_id
   )
 
-  assert args.stake_to_be_added <= balance, "Invalid stake_to_be_added - Balance must be greater than %s" % min_stake_balance
+  logger.info('Your balance is %s (%s)' % (float(int(str(balance))), float(balance / 1e18)))
 
-  add_model_peer_receipt = add_model_peer(
+  assert args.stake_to_be_added <= balance, "Invalid stake_to_be_added. Need %s more. Balance is %s and must be greater than %s" % (
+    (min_stake_balance - balance), balance, min_stake_balance
+  )
+
+  logger.info('Adding subnet node to blockchain storage')
+
+  print("model_id     ", model_id)
+  print("peer_id      ", peer_id)
+  print("ip           ", ip)
+  print("port         ", port)
+  print("initialized  ", initialized)
+  print("args.stake_to_be_added  ", args.stake_to_be_added)
+
+  add_model_peer_receipt = add_subnet_node(
     substrate_config.SubstrateConfig.interface,
     substrate_config.SubstrateConfig.keypair,
     model_id,
     peer_id,
-    ip,
-    port,
     args.stake_to_be_added,
   )
 
@@ -117,13 +167,13 @@ def main():
   eligible_consensus_inclusion_block = substrate_utils.get_eligible_consensus_block(
     network_config.min_required_peer_consensus_inclusion_epochs, 
     block_number, 
-    network_config.consensus_blocks_interval
+    network_config.epoch_length
   )
 
   eligible_consensus_submit_block = substrate_utils.get_eligible_consensus_block(
     network_config.min_required_peer_consensus_submit_epochs, 
     block_number, 
-    network_config.consensus_blocks_interval
+    network_config.epoch_length
   )
 
   if add_model_peer_receipt.is_success:
@@ -140,6 +190,13 @@ def main():
         """
         model_validator_config.initialized = block
         substrate_config.save_model_validator_config(model_validator_config)
+
+        substrate_utils.save_last_unconfirm_consensus_block(0)
+        substrate_utils.save_last_submit_consensus_block(0)
+
+        """Start subscribing to blocks"""
+        if subscribe:
+          """"""
   else:
     logger.error('⚠️ Extrinsic Failed with the following error message: %s' % add_model_peer_receipt.error_message)
 

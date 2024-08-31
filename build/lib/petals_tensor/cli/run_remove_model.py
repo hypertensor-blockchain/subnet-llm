@@ -46,7 +46,7 @@ def main():
 
   block_number = substrate_config.SubstrateConfig.interface.get_block_number()
   
-  add_model_receipt = add_model(
+  remove_model_receipt = remove_model(
     substrate_config.SubstrateConfig.interface,
     substrate_config.SubstrateConfig.keypair,
     args.peer_id,
@@ -65,10 +65,10 @@ def main():
       if event_id == 'ModelAdded':
         model_id = event['attributes']['model_id']
         block = event['attributes']['block']
-        substrate_config.ModelDataConfig.id = model_id
-        substrate_config.ModelDataConfig.initialized = block
+        substrate_config.SubnetDataConfig.id = model_id
+        substrate_config.SubnetDataConfig.initialized = block
   else:
-    logger.error('⚠️ Extrinsic Failed, add_model_peer unsuccessful with the following error message: %s' % add_model_receipt.error_message)
+    logger.error('⚠️ Extrinsic Failed, add_subnet unsuccessful with the following error message: %s' % add_model_receipt.error_message)
 
 
 if __name__ == "__main__":

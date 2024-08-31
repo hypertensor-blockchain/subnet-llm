@@ -132,9 +132,6 @@ class TransformerBackend(ModuleBackend):
         hypo_ids: torch.LongTensor,
         inference_info: InferenceMetadata,
     ) -> Tuple[torch.Tensor, ...]:
-        print("inference_step")
-        print("inference_info inference_info", inference_info)
-
         """
         Process a single inference step for a transformer block
 

@@ -31,7 +31,6 @@ class StateUpdaterThread(threading.Thread):
         start_time = time.perf_counter()
         # try:
         #     # state_dict = fetch_health_state(self.dht)
-        #     # print("state_dict", state_dict)
         #     state_dict = fetch_health_state2(self.dht)
 
         #     self.state_json = simplejson.dumps(state_dict, indent=2, ignore_nan=True, default=json_default)
@@ -47,7 +46,6 @@ class StateUpdaterThread(threading.Thread):
     #         start_time = time.perf_counter()
     #         try:
     #             # state_dict = fetch_health_state(self.dht)
-    #             # print("state_dict", state_dict)
     #             state_dict = fetch_health_state2(self.dht)
 
     #             self.state_json = simplejson.dumps(state_dict, indent=2, ignore_nan=True, default=json_default)

@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import itertools
+import pprint
 import time
 import uuid
-from typing import AsyncIterator, Dict, List, Optional, Tuple
+from typing import Any, AsyncIterator, Dict, List, Optional, Tuple
 
 import torch
 from hivemind import MSGPackSerializer, anext, deserialize_torch_tensor, get_logger, serialize_torch_tensor
@@ -89,7 +90,11 @@ class _ServerInferenceSession:
     def step(
         self, inputs: torch.Tensor, prompts: torch.Tensor, hypo_ids: torch.LongTensor, *, step_id: str
     ) -> torch.Tensor:
-        # print("inferece_session.py / step() 89")
+        print("_ServerInferenceSession step")
+        print("_ServerInferenceSession inputs", inputs)
+        print("_ServerInferenceSession prompts", prompts)
+        print("_ServerInferenceSession hypo_ids", hypo_ids)
+        print("_ServerInferenceSession step_id", step_id)
         """
         Inference step: send a chunk of input tensors and receive a chunk of outputs
         :prompts: optional DEEP prompts, added to a prefix of each layer's outputs,
@@ -148,7 +153,9 @@ class _ServerInferenceSession:
                 )
             )
         )
+
         outputs = list(map(deserialize_torch_tensor, outputs_serialized.tensors))
+
         assert (
             outputs[0].shape == inputs.shape
         ), f"output activation shape is different from input shape: {outputs[0].shape} != {inputs.shape}"
@@ -168,6 +175,7 @@ class _ServerInferenceSession:
         return next_servers
 
     async def _step(self, inputs_serialized: runtime_pb2.ExpertRequest) -> runtime_pb2.ExpertResponse:
+        print("validator inferece_session _step")
         """Inference step on serialized data. This code is meant to be run inside RemoteExpertWorker"""
         await self._inputs_queue.put(inputs_serialized)
         self.stepped = True
@@ -215,7 +223,8 @@ class InferenceSession:
         max_length: int, 
         peer_ids: Optional[List[str]] = None, 
         peers: Optional[List[Dict]] = None, 
-        peer_id: Optional[str] = None
+        peer_id: Optional[str] = None,
+        tensors: Optional[List] = None # stored tensors to inject into sequence
     ):
         self._sequence_manager = sequence_manager
         self._closed = False
@@ -228,7 +237,7 @@ class InferenceSession:
         self.peers = peers
         self.peer_ids = peer_ids
         self.inference_session_data = []
-        # print("InferenceSession validator init sequence_manager", sequence_manager)
+        self.tensors = tensors
 
     @property
     def num_blocks(self) -> int:
@@ -276,7 +285,7 @@ class InferenceSession:
     def step(
         self, inputs: torch.Tensor, prompts: Optional[torch.Tensor] = None, hypo_ids: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
-        # print("validator inferece_session.py / step() 262")
+        print("validator inferece_session step2")
         assert not self._closed
         if torch.is_grad_enabled():
             logger.warning("Running inference session with grad enabled. Gradients will *not* be propagated correctly.")
@@ -303,9 +312,6 @@ class InferenceSession:
         hypo_ids = hypo_ids.cpu()
         step_id = str(uuid.uuid4())
 
-        # print("validator hypo_ids", hypo_ids)
-        # print("validator step_id", step_id)
-
         n_input_tokens = inputs.shape[1]
         if self._position + n_input_tokens > self._max_length:
             raise ValueError(
@@ -330,7 +336,6 @@ class InferenceSession:
         
         # while block_idx < peer_end_block:
         while block_idx < self.num_blocks:
-            print("\n\n\n while block_idx < self.num_blocks")
             for attempt_no in itertools.count():
                 logger.debug(f"Inference: block {block_idx}, attempt {attempt_no}")
                 server_session = None
@@ -339,21 +344,28 @@ class InferenceSession:
                         self._update_sequence(server_idx, block_idx, attempt_no)
 
                     print("step block_idx", block_idx)
+                    print("step server_idx", server_idx)
 
                     server_session = self._server_sessions[server_idx]
-                    print("step server_session.span.start", server_session.span.start)
-                    print("step server_session.span.end", server_session.span.end)
 
-                    inputs = server_session.step(
-                        inputs, prompts[server_session.span.start : server_session.span.end], hypo_ids, step_id=step_id
+                    # Get tensor history that matches the exact server_idx, start, and end
+                    tensors = self.get_tensor_history(
+                        server_idx, 
+                        server_session.span.start, 
+                        server_session.span.end,
+                        self._position
                     )
+                    print("step tensors", tensors)
+                    # print("prompts[server_session.span.start : server_session.span.end]", prompts[server_session.span.start : server_session.span.end])
 
-                    server_idx += 1
-                    block_idx = server_session.span.end
-
-                    print("step inputs        ", inputs)
-                    print("step server_session.span", str(server_session.span))
-                    print("step server_idx", server_idx)
+                    if tensors is not None:
+                        inputs = tensors["inputs"]
+                        block_idx = tensors["span_end"]
+                    else:                        
+                        inputs = server_session.step(
+                            inputs, prompts[server_session.span.start : server_session.span.end], hypo_ids, step_id=step_id
+                        )
+                        block_idx = server_session.span.end
 
                     step_outputs = inputs[:, -n_input_tokens:]
                     step_outputs = step_outputs.to(device=inputs_device, dtype=inputs_dtype)
@@ -367,13 +379,15 @@ class InferenceSession:
                             "attempt_no": attempt_no,
                             "peer_id": server_session.span.peer_id if server_session is not None else None,
                             "server_session": str(server_session.span) if server_session is not None else None,
+                            "hypo_ids": hypo_ids,
+                            "step_id": step_id,
+                            "position": self._position,
                         }
                     )
 
-                    # tokenizer = AutoTokenizer.from_pretrained("petals-team/StableBeluga2")
-                    # print("decode ->", tokenizer.decode(inputs['input_ids']))
+                    server_idx += 1
+                    # block_idx = server_session.span.end
 
-                    # print("server_session.span.peer_id", server_session.span.peer_id)
                     self._sequence_manager.on_request_success(server_session.span.peer_id)
 
                     break
@@ -393,14 +407,147 @@ class InferenceSession:
 
         self._position += n_input_tokens
         outputs = inputs[:, -n_input_tokens:]
-        print("step inputs[:, -n_input_tokens:]       -> ", outputs)
+        # print("step inputs[:, -n_input_tokens:]       -> ", outputs)
 
         outputs = outputs.to(device=inputs_device, dtype=inputs_dtype)
-        print("step outputs       -> ", outputs)
-        print("step inputs        -> ", inputs)
+        # print("step outputs       -> ", outputs)
+        # print("step inputs        -> ", inputs)
 
         print("\n\n\n")
         return outputs
+
+    def get_tensor_history(self, server_idx, start, end, position):
+        if self.tensors is None:
+            return None
+        else:
+            for tensor in self.tensors:
+                if (
+                    tensor["server_idx"] == server_idx and 
+                    tensor["span_start"] == start and
+                    tensor["position"] == position
+                ):
+                    return tensor
+        return None
+
+    # def step_with_history(
+    #     self, 
+    #     inputs: torch.Tensor, 
+    #     history: Any, 
+    #     prompts: Optional[torch.Tensor] = None, 
+    #     hypo_ids: Optional[torch.Tensor] = None
+    # ) -> torch.Tensor:
+    #     """`history` needs to come in block by block with spans being only 1 block in length"""
+    #     print("validator step_with_history")
+    #     assert not self._closed
+    #     if torch.is_grad_enabled():
+    #         logger.warning("Running inference session with grad enabled. Gradients will *not* be propagated correctly.")
+
+    #     if prompts is None or is_dummy(prompts):
+    #         prompts = DUMMY
+    #     else:
+    #         assert prompts.ndim == 4, "deep prompts should have shape [num_blocks, batch_size, prefix_len, hid_size]"
+    #         assert prompts.shape[0] == self.num_blocks
+    #         assert prompts.shape[1] in (inputs.shape[0], 1)
+    #         assert prompts.shape[2] <= inputs.shape[1]
+    #         assert prompts.shape[3] == inputs.shape[2]
+
+    #     if hypo_ids is None or is_dummy(hypo_ids):
+    #         hypo_ids = DUMMY_INT64
+    #     else:
+    #         assert len(hypo_ids) == len(inputs)
+    #         assert hypo_ids.dtype == torch.int64
+
+    #     inputs_device = inputs.device
+    #     inputs_dtype = inputs.dtype
+    #     inputs = inputs.cpu()
+    #     prompts = prompts.cpu()
+    #     hypo_ids = hypo_ids.cpu()
+    #     step_id = str(uuid.uuid4())
+
+    #     n_input_tokens = inputs.shape[1]
+    #     if self._position + n_input_tokens > self._max_length:
+    #         raise ValueError(
+    #             f"Maximum length exceeded: prefix {self._position} + current {n_input_tokens} exceeds pre-allocated maximum {self._max_length}"
+    #         )
+
+    #     print("\n\n\n")
+    #     print("step_with_history n_input_tokens", n_input_tokens)
+    #     print("step_with_history self._position", self._position)
+    #     server_idx = 0
+    #     block_idx = 0
+
+    #     while block_idx < self.num_blocks:
+    #         print("\n\n\n while block_idx < self.num_blocks")
+    #         for attempt_no in itertools.count():
+    #             logger.debug(f"Inference: block {block_idx}, attempt {attempt_no}")
+    #             server_session = None
+    #             try:
+    #                 if not self._server_sessions or attempt_no >= 1:
+    #                     self._update_sequence(server_idx, block_idx, attempt_no)
+
+    #                 print("step block_idx", block_idx)
+
+    #                 server_session = self._server_sessions[server_idx]
+    #                 print("step server_session.span.start", server_session.span.start)
+    #                 print("step server_session.span.end", server_session.span.end)
+
+    #                 inputs = server_session.step(
+    #                     inputs, prompts[server_session.span.start : server_session.span.end], hypo_ids, step_id=step_id
+    #                 )
+
+    #                 server_idx += 1
+    #                 block_idx = server_session.span.end
+
+    #                 print("step_with_history inputs        ", inputs)
+    #                 print("step_with_history server_session.span", str(server_session.span))
+    #                 print("step_with_history server_idx", server_idx)
+
+    #                 step_outputs = inputs[:, -n_input_tokens:]
+    #                 step_outputs = step_outputs.to(device=inputs_device, dtype=inputs_dtype)
+    #                 self.inference_session_data.append(
+    #                     {
+    #                         "server_idx": server_idx,
+    #                         "inputs": inputs,
+    #                         "outputs": step_outputs,
+    #                         "span_start": server_session.span.start,
+    #                         "span_end": server_session.span.end,
+    #                         "attempt_no": attempt_no,
+    #                         "peer_id": server_session.span.peer_id if server_session is not None else None,
+    #                         "server_session": str(server_session.span) if server_session is not None else None,
+    #                     }
+    #                 )
+
+    #                 # tokenizer = AutoTokenizer.from_pretrained("petals-team/StableBeluga2")
+    #                 # print("decode ->", tokenizer.decode(inputs['input_ids']))
+
+    #                 # print("server_session.span.peer_id", server_session.span.peer_id)
+    #                 self._sequence_manager.on_request_success(server_session.span.peer_id)
+
+    #                 break
+    #             except Exception as e:
+    #                 self._sequence_manager.on_request_failure(
+    #                     server_session.span.peer_id if server_session is not None else None
+    #                 )
+    #                 if attempt_no + 1 == self._sequence_manager.config.max_retries:
+    #                     raise
+    #                 delay = self._sequence_manager.get_retry_delay(attempt_no)
+    #                 logger.warning(
+    #                     f"Caught exception when running inference via {server_session.span if server_session is not None else None} "
+    #                     f"(retry in {delay:.0f} sec): {repr(e)}"
+    #                 )
+    #                 maybe_log_traceback(e)
+    #                 time.sleep(delay)
+
+    #     self._position += n_input_tokens
+    #     outputs = inputs[:, -n_input_tokens:]
+    #     print("step_with_history inputs[:, -n_input_tokens:]       -> ", outputs)
+
+    #     outputs = outputs.to(device=inputs_device, dtype=inputs_dtype)
+    #     print("step_with_history outputs       -> ", outputs)
+    #     print("step_with_history inputs        -> ", inputs)
+
+    #     print("\n\n\n")
+    #     return outputs
 
     def _update_sequence(self, server_idx: int, block_idx: int, attempt_no: int) -> int:
         # If there is a failed server session, this code closes it

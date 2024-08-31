@@ -1,7 +1,7 @@
 """
 This should be ran after your node has successfully began hosting the machine learning models
 
-Before running add_model_peer() make sure your peer_id is shown when running `health.py`
+Before running add_subnet_node() make sure your peer_id is shown when running `health.py`
 
 It's important other peers are submitting your peer_id during peer consensus so the node 
 doesn't increment your peer_id out of consensus. Read documentation for more information
@@ -15,7 +15,7 @@ import argparse
 from petals_tensor.health.state_updater import get_peer_ids_list
 from petals_tensor.substrate import config as substrate_config
 import re
-from petals_tensor.substrate.chain_functions import add_model_peer, get_balance, get_model_peer_account
+from petals_tensor.substrate.chain_functions import add_subnet_node, get_balance, get_model_peer_account
 from petals_tensor.substrate import utils as substrate_utils
 
 logger = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ def main():
 
   args = parser.parse_args()
 
-  model_config = substrate_config.load_model_config()
+  model_config = substrate_config.load_subnet_config()
   model_id = model_config.id
 
   network_config = substrate_config.load_network_config()
@@ -48,14 +48,14 @@ def main():
 
   in_consensus_steps = substrate_utils.is_in_consensus_steps(
     block_number,
-    network_config.consensus_blocks_interval, 
+    network_config.epoch_length, 
   )
 
   assert in_consensus_steps == False, "Cannot add model peer while blockchain is running consensus steps. Wait 2 blocks"
 
   """
   Peer data is previously saved before storing on the blockchain
-  After successfully running `add_model_peer` in Hypertensor we store the new `initialized` at the end
+  After successfully running `add_subnet_node` in Hypertensor we store the new `initialized` at the end
   """
   model_validator_config = substrate_config.load_model_validator_config()
 
@@ -101,13 +101,11 @@ def main():
 
   assert args.stake_to_be_added <= balance, "Invalid stake_to_be_added - Balance must be greater than %s" % min_stake_balance
 
-  add_model_peer_receipt = add_model_peer(
+  add_model_peer_receipt = add_subnet_node(
     substrate_config.SubstrateConfig.interface,
     substrate_config.SubstrateConfig.keypair,
     model_id,
     peer_id,
-    ip,
-    port,
     args.stake_to_be_added,
   )
 
@@ -117,13 +115,13 @@ def main():
   eligible_consensus_inclusion_block = substrate_utils.get_eligible_consensus_block(
     network_config.min_required_peer_consensus_inclusion_epochs, 
     block_number, 
-    network_config.consensus_blocks_interval
+    network_config.epoch_length
   )
 
   eligible_consensus_submit_block = substrate_utils.get_eligible_consensus_block(
     network_config.min_required_peer_consensus_submit_epochs, 
     block_number, 
-    network_config.consensus_blocks_interval
+    network_config.epoch_length
   )
 
   if add_model_peer_receipt.is_success:

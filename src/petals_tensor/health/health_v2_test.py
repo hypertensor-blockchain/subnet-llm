@@ -61,12 +61,10 @@ def fetch_health_state2(dht: hivemind.DHT) -> dict:
     for peer_id, span in sorted(model_servers.items()):
         reachable = reach_infos[peer_id]["ok"] if peer_id in reach_infos else True
         state = span.state.name.lower() if reachable else "unreachable"
-        print("peer_id", peer_id)
 
         # only append online model validators
         if state == "online":
             block_healthy[span.start : span.end] = True
-            print("block_healthy[]", block_healthy)
             peer_num_blocks = span.length
             throughput = span.throughput
 
@@ -136,7 +134,6 @@ def fetch_health_state2(dht: hivemind.DHT) -> dict:
             **asdict(model),
         )
     )
-    print(model_reports)
 
     reachability_issues = [
         dict(peer_id=peer_id, err=info["error"]) for peer_id, info in sorted(reach_infos.items()) if not info["ok"]

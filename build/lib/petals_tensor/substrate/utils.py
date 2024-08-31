@@ -3,8 +3,8 @@ Miscellaneous
 """
 import pickle
 from typing import List, Dict
-from petals_tensor.substrate.chain_data import ModelPeerData
-from petals_tensor.substrate.chain_functions import get_model_peers_included, get_model_peers_submittable
+from petals_tensor.substrate.chain_data import AccountIdList, ModelPeerData
+from petals_tensor.substrate.chain_functions import get_model_peers_included, get_model_peers_submittable, get_submittables
 from petals_tensor.substrate.config import PERCENTAGE_EPOCH_HEALTH_CONSENSUS_RECHECK, load_network_config
 from substrateinterface import SubstrateInterface
 from petals_tensor.health.state_updater import StateUpdaterThreadV2
@@ -28,8 +28,6 @@ def get_blockchain_peers_consensus_data(
   # peers_data = get_peers_data()
 
   peers_data = state_updater.run()
-
-  print("peers_data -> ", peers_data)
 
   """
   If model is broken then send back `model_state` as broken with a blank `peers` array
@@ -77,7 +75,6 @@ def get_blockchain_peers_consensus_data(
 
                 """Match Hosting Peers -> Blockchain Model Peers"""
                 if blockchain_peer_id == peer_id:
-                  print("peer_id ->", peer_id)
                   
                   span_length = server['span'].length
                   using_relay = server['using_relay']
@@ -91,6 +88,7 @@ def get_blockchain_peers_consensus_data(
                   break
 
   """If peers don't match blockchain peers, return broken"""
+
   if len(initial_blockchain_peers) == 0 or total_blockchain_model_peers_blocks == 0:
     return {
       "model_state": "broken",
@@ -128,7 +126,6 @@ def get_blockchain_peers_consensus_data(
   print("Get scores as share")
   for model_peer in blockchain_peers:
     score = int(model_peer['score'] / scores_sum * 1e4)
-    print("old score, new score", model_peer['score'], score)
     model_peer['score'] = score
 
   return {
@@ -172,28 +169,34 @@ def get_score(x: int, peers: int, blocks_per_layer: int, total_blocks: int) -> i
   y = int((k * share * share + share) * 1e18)
   return y
 
-def get_consensus_data(substrate: SubstrateInterface, model_id: int) -> Dict:
+def get_consensus_data(substrate: SubstrateInterface, subnet_id: int) -> Dict:
   result = get_model_peers_included(
     substrate,
-    model_id
+    subnet_id
   )
 
   model_peers_data = ModelPeerData.list_from_vec_u8(result["result"])
 
   consensus_data = get_blockchain_peers_consensus_data(model_peers_data)
+  # print("get_consensus_data consensus_data", consensus_data)
 
   return consensus_data
+
+def get_submittable_nodes(substrate: SubstrateInterface, subnet_id: int) -> List:
+  result = get_submittables(
+    substrate,
+    subnet_id
+  )
+
+  return result
 
 def get_blochchain_model_peers_submittable(substrate: SubstrateInterface, model_id: int) -> Dict:
   result = get_model_peers_submittable(
     substrate,
     model_id
   )
-  print("get_blochchain_model_peers_submittable result", result)
 
   model_peers_data = ModelPeerData.list_from_vec_u8(result["result"])
-
-  print("get_blochchain_model_peers_submittable", model_peers_data)
 
   return model_peers_data
 
@@ -270,6 +273,13 @@ def get_next_eligible_submit_consensus_block(
   block_span_can_remove_peer = int(epochs_interval * remove_model_peer_epoch_percentage)
 
   return epochs_interval + (last_block - (last_block % epochs_interval)) + block_span_can_remove_peer
+
+def get_next_epoch_start_block(
+  epochs_length: int, 
+  block: int
+) -> int:
+  """Returns next start block for next epoch"""
+  return epochs_length + (block - (block % epochs_length))
 
 def should_check_model_health_after_consensus(
   block: int,

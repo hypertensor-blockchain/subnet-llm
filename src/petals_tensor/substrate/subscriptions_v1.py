@@ -1,7 +1,7 @@
 from substrateinterface import SubstrateInterface
 from substrateinterface.exceptions import SubstrateRequestException
 from tenacity import retry, stop_after_attempt, wait_exponential
-from config import load_model_config, load_model_validator_config, load_network_config, save_model_config, save_model_validator_config, save_network_config, SubstrateConfig
+from config import load_subnet_config, load_model_validator_config, load_network_config, save_subnet_config, save_model_validator_config, save_network_config, SubstrateConfig
 from chain_data import ModelPeerData
 from utils import get_blockchain_peers_consensus_data, get_consensus_data, get_next_eligible_submit_consensus_block, is_in_consensus_steps, load_last_submit_consensus_block, load_last_unconfirm_consensus_block, load_unconfirm_consensus_count, save_last_submit_consensus_block, save_last_unconfirm_consensus_block, save_unconfirm_consensus_count
 from submit_consensus import eligible_to_submit_consensus_data, eligible_to_unconfirm_consensus_data
@@ -15,17 +15,16 @@ def block_subscription_handler(obj, update_nr, subscription_id):
   Block subsctipion handler used for submitting consensus data only
   """
   block_number = obj['header']['number']
-  print(f"New block #{block_number}")
 
   network_config = load_network_config()
 
   in_consensus_steps = is_in_consensus_steps(
     block_number,
-    network_config.consensus_blocks_interval, 
+    network_config.epoch_length, 
   )
 
   if in_consensus_steps == False: 
-    model_config = load_model_config()
+    model_config = load_subnet_config()
     model_id = model_config.id
     model_initialized = model_config.initialized
 
@@ -38,41 +37,35 @@ def block_subscription_handler(obj, update_nr, subscription_id):
     last_unconfirm_consensus_block = load_last_unconfirm_consensus_block()
 
     next_submit_consensus_block = get_next_eligible_submit_consensus_block(
-      network_config.consensus_blocks_interval, 
+      network_config.epoch_length, 
       last_submit_consensus_block
     )
 
     next_unconfirm_consensus_block = get_next_eligible_submit_consensus_block(
-      network_config.consensus_blocks_interval, 
+      network_config.epoch_length, 
       last_unconfirm_consensus_block
     )
 
     can_submit = block_number > next_submit_consensus_block
-    print("can_submit ->", can_submit)
+
     can_unconfirm = block_number > next_unconfirm_consensus_block
-    print("can_unconfirm ->", can_unconfirm)
+
     can_submit_or_unconfirm = can_submit or can_unconfirm
 
     """variables for undoing consensus submit or unconfirm"""
     """
     Wait until the latter portion of the epoch to undo either a submission or unconfirm
     """
-    consensus_blocks_interval = network_config.consensus_blocks_interval
-    print("consensus_blocks_interval ->", consensus_blocks_interval)
+    epoch_length = network_config.epoch_length
     latter_of_epoch_undo_percentage = 0.10
-    latter_blocks_span = consensus_blocks_interval * latter_of_epoch_undo_percentage
-    print("latter_blocks_span ->", latter_blocks_span)
-    min_block = block_number - (block_number % consensus_blocks_interval) + consensus_blocks_interval - latter_blocks_span
-    print("min_block ->", min_block)
-    max_block = consensus_blocks_interval + block_number - (block_number % consensus_blocks_interval)
-    print("max_block ->", max_block)
+    latter_blocks_span = epoch_length * latter_of_epoch_undo_percentage
+    min_block = block_number - (block_number % epoch_length) + epoch_length - latter_blocks_span
+    max_block = epoch_length + block_number - (block_number % epoch_length)
 
     """If in span of blocks to submit unconfirm"""
     in_undo_blocks_span = min_block <= block_number < max_block
-    print("in_undo_blocks_span ->", in_undo_blocks_span)
     """Only undo every 10 blocks"""
     in_undo_block = block_number % 10 == 0
-    print("in_undo_block ->", in_undo_block)
 
     """
     There are 3 possible calls
@@ -86,7 +79,6 @@ def block_subscription_handler(obj, update_nr, subscription_id):
       • This is the first call of all 3
     """
     if in_undo_blocks_span and in_undo_block and can_submit == False and can_unconfirm == True:
-      print("if in_undo_blocks_span 1 ->")
       """Previously submitted consensus data - check if model is broken to unconfirm"""
       unconfirm_consensus_count = load_unconfirm_consensus_count()
       """
@@ -108,7 +100,7 @@ def block_subscription_handler(obj, update_nr, subscription_id):
           model_id,
           model_initialized,
           min_required_model_consensus_submit_epochs,
-          network_config.consensus_blocks_interval,
+          network_config.epoch_length,
           min_required_peer_consensus_submit_epochs,
         )
 
@@ -125,7 +117,6 @@ def block_subscription_handler(obj, update_nr, subscription_id):
               model_id,
             )
     elif in_undo_blocks_span and in_undo_block and can_submit == True and can_unconfirm == False:
-      print("if in_undo_blocks_span 2 ->")
       """Previously unconfirmed consensus data - check if model is healthy to submit consensus"""
       """
       Update as last submit consensus block whether we do or don't
@@ -141,7 +132,7 @@ def block_subscription_handler(obj, update_nr, subscription_id):
         model_id,
         model_initialized,
         min_required_model_consensus_submit_epochs,
-        network_config.consensus_blocks_interval,
+        network_config.epoch_length,
         min_required_peer_consensus_submit_epochs,
       )
 
@@ -159,7 +150,6 @@ def block_subscription_handler(obj, update_nr, subscription_id):
             consensus_data
           )
     elif can_submit_or_unconfirm:
-      print("else in_undo_blocks_span ->")
       """Has not yet submitted consensus data or unconfirmed consensus data"""
       consensus_data = get_consensus_data(SubstrateConfig.interface, model_id)
 
@@ -174,7 +164,7 @@ def block_subscription_handler(obj, update_nr, subscription_id):
           model_id,
           model_initialized,
           min_required_model_consensus_submit_epochs,
-          network_config.consensus_blocks_interval,
+          network_config.epoch_length,
           min_required_peer_consensus_submit_epochs,
         )
         if eligible_to_unconfirm:
@@ -187,7 +177,7 @@ def block_subscription_handler(obj, update_nr, subscription_id):
       elif len(consensus_data["peers"]) > 0:
         """If model is healthy with peers, submit consensus data"""
         """Double check blockchain data `can submit data`"""
-        model_config = load_model_config()
+        model_config = load_subnet_config()
 
         eligible_to_submit = eligible_to_submit_consensus_data(
           SubstrateConfig.interface, 
@@ -196,7 +186,7 @@ def block_subscription_handler(obj, update_nr, subscription_id):
           model_id,
           model_initialized,
           min_required_model_consensus_submit_epochs,
-          network_config.consensus_blocks_interval,
+          network_config.epoch_length,
           min_required_peer_consensus_submit_epochs,
         )
 
@@ -214,13 +204,12 @@ def block_subscription_handler(obj, update_nr, subscription_id):
 #   Block subsctipion handler used for submitting consensus data only
 #   """
 #   block_number = obj['header']['number']
-#   print(f"New block #{block_number}")
 
 #   network_config = load_network_config()
 
 #   in_consensus_steps = is_in_consensus_steps(
 #     block_number,
-#     network_config.consensus_blocks_interval, 
+#     network_config.epoch_length, 
 #   )
 
 #   if in_consensus_steps == False: 
@@ -230,12 +219,12 @@ def block_subscription_handler(obj, update_nr, subscription_id):
 #     unconfirm_count = load_unconfirm_consensus_count()
 
 #     next_submit_consensus_block = get_next_eligible_submit_consensus_block(
-#       network_config.consensus_blocks_interval, 
+#       network_config.epoch_length, 
 #       last_submit_consensus_block
 #     )
 
 #     next_unconfirm_consensus_block = get_next_eligible_submit_consensus_block(
-#       network_config.consensus_blocks_interval, 
+#       network_config.epoch_length, 
 #       last_unconfirm_consensus_block
 #     )
 
@@ -248,10 +237,8 @@ def block_subscription_handler(obj, update_nr, subscription_id):
 #         substrate,
 #       )
 #       model_peers_data = ModelPeerData.list_from_vec_u8(result["result"])
-#       print("model_peers_data: ", model_peers_data)
 
 #       consensus_data = get_blockchain_peers_consensus_data(model_peers_data)
-#       print("consensus_data: ", consensus_data)
 
 #       if consensus_data["peers"] == "broken":
 #         """If model is broken unconfirm data"""
@@ -283,7 +270,7 @@ def block_subscription_handler(obj, update_nr, subscription_id):
 #         substrate,
 #         model_validator_config.account_id,
 #         block_number,
-#         network_config.consensus_blocks_interval,
+#         network_config.epoch_length,
 #       )
 #     else:
 #       """"""
@@ -305,28 +292,25 @@ def block_subscription_handler(obj, update_nr, subscription_id):
 
 
 
-#     model_config = load_model_config()
+#     model_config = load_subnet_config()
 #     model_validator_config = load_model_validator_config()
 
 #     eligible_to_submit = eligible_to_submit_consensus_data(
 #       substrate, 
 #       model_validator_config.account_id,
 #       block_number,
-#       network_config.consensus_blocks_interval,
+#       network_config.epoch_length,
 #       model_config.id,
 #     )
 
-#     print("eligible_to_submit: ", eligible_to_submit)
 
 #     if eligible_to_submit["eligible"]:
 #       result = get_model_peers(
 #         substrate,
 #       )
 #       model_peers_data = ModelPeerData.list_from_vec_u8(result["result"])
-#       print("model_peers_data: ", model_peers_data)
 
 #       consensus_data = get_blockchain_peers_consensus_data(model_peers_data)
-#       print("consensus_data: ", consensus_data)
 
 #       if consensus_data["peers"] == "broken":
 #         unconfirm_consensus_data(
@@ -393,7 +377,7 @@ def maximum_outlier_delta_percent_subscription_handler(obj, update_nr, subscript
   
 def consensus_blocks_interval_subscription_handler(obj, update_nr, subscription_id):
   network_config = load_network_config()
-  network_config.consensus_blocks_interval = int(str(obj.value))
+  network_config.epoch_length = int(str(obj.value))
   save_network_config(network_config)
 
 def remove_model_peer_epoch_percentage_subscription_handler(obj, update_nr, subscription_id):
@@ -409,7 +393,7 @@ def model_consensus_epoch_unconfirm_count_subscription_handler(obj, update_nr, s
     network_config = load_network_config()
     last_unconfirm_consensus_block = load_last_unconfirm_consensus_block()
     next_unconfirm_consensus_block = get_next_eligible_submit_consensus_block(
-      network_config.consensus_blocks_interval, 
+      network_config.epoch_length, 
       last_unconfirm_consensus_block
     )
 
@@ -424,7 +408,7 @@ def model_consensus_epoch_unconfirm_count_subscription_handler(obj, update_nr, s
 
     can_unconfirm = block_number > next_unconfirm_consensus_block
     if can_unconfirm:
-      model_config = load_model_config()
+      model_config = load_subnet_config()
       model_id = model_config.id
       model_initialized = model_config.initialized
 
@@ -442,7 +426,7 @@ def model_consensus_epoch_unconfirm_count_subscription_handler(obj, update_nr, s
         model_id,
         model_initialized,
         min_required_model_consensus_submit_epochs,
-        network_config.consensus_blocks_interval,
+        network_config.epoch_length,
         min_required_peer_consensus_submit_epochs,
       )
 

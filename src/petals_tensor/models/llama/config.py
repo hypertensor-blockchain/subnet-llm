@@ -13,7 +13,7 @@ from petals_tensor.validator.config import ClientConfig as ClientConfigValidator
 from petals_tensor.validator.lm_head import LMHeadConfig as LMHeadConfigValidator
 from petals_tensor.validator.ptune import PTuneConfig as PTuneConfigValidator
 
-from petals_tensor.models.llama.block import WrappedLlamaBlock
+from petals_tensor.models.llama.block import WrappedLlamaBlock, WrappedLlamaBlockValidator
 
 logger = get_logger(__name__)
 
@@ -52,7 +52,7 @@ class DistributedLlamaConfig(LlamaConfig, ClientConfig, PTuneConfig, LMHeadConfi
         return result
 
 class DistributedLlamaValidatorConfig(LlamaConfig, ClientConfigValidator, PTuneConfigValidator, LMHeadConfigValidator):
-    block_class = WrappedLlamaBlock
+    block_class = WrappedLlamaBlockValidator
     attn_class = LlamaAttention
     block_prefix = "model.layers"
 

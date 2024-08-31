@@ -87,7 +87,7 @@ def main():
   # assert validate_peer_id(args.peer_id), "PeerId invalid - Must be correct format"
 
   """Load model data saved from `run_server` CLI"""
-  model_config = substrate_config.load_model_config()
+  model_config = substrate_config.load_subnet_config()
   model_id = model_config.id
 
   """Load network data saved from `run_update_network_config` CLI"""
@@ -105,7 +105,7 @@ def main():
 
   in_consensus_steps = substrate_utils.is_in_consensus_steps(
     block_number,
-    network_config.consensus_blocks_interval, 
+    network_config.epoch_length, 
   )
 
   assert in_consensus_steps == False, "Cannot add model peer while blockchain is running consensus steps. Wait 2 blocks"
@@ -179,13 +179,13 @@ def main():
   eligible_consensus_inclusion_block = substrate_utils.get_eligible_consensus_block(
     network_config.min_required_peer_consensus_inclusion_epochs, 
     block_number, 
-    network_config.consensus_blocks_interval
+    network_config.epoch_length
   )
 
   eligible_consensus_submit_block = substrate_utils.get_eligible_consensus_block(
     network_config.min_required_peer_consensus_submit_epochs, 
     block_number, 
-    network_config.consensus_blocks_interval
+    network_config.epoch_length
   )
 
   if add_model_peer_receipt.is_success:

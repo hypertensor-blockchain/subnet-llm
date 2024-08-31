@@ -32,6 +32,7 @@ async def ping(
     """
     try:
         ping_request = dht_pb2.PingRequest(peer=node.protocol.node_info)
+        # Check if this includes context: P2PContext
         start_time = time.perf_counter()
         await node.protocol.get_stub(peer_id).rpc_ping(ping_request, timeout=wait_timeout)
         return time.perf_counter() - start_time
@@ -74,6 +75,7 @@ class PingAggregator:
         self.lock = threading.Lock()
 
     def ping(self, peer_ids: Sequence[hivemind.PeerID], **kwargs) -> None:
+        print("PingAggregator ping")
         """
         Pings multiple peers and updates the smoothed RTTs
         Args:

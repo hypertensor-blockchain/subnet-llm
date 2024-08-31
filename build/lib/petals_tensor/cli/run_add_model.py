@@ -62,11 +62,11 @@ def main():
       if event_id == 'ModelAdded':
         model_id = event.value['attributes']['model_id']
         block = event.value['attributes']['block']
-        model_config = substrate_config.load_model_config()
+        model_config = substrate_config.load_subnet_config()
         model_config.id = model_id
         model_config.initialized = block
   else:
-    logger.error('⚠️ Extrinsic Failed, add_model_peer unsuccessful with the following error message: %s' % add_model_receipt.error_message)
+    logger.error('⚠️ Extrinsic Failed, add_subnet unsuccessful with the following error message: %s' % add_model_receipt.error_message)
 
 
 if __name__ == "__main__":
