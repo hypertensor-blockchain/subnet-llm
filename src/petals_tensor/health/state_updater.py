@@ -11,7 +11,7 @@ import simplejson
 # import config
 from .config import *
 # from .health_v1 import fetch_health_state
-from .health_v2 import fetch_health_state2, get_online_peers
+from .health_v2 import fetch_health_state2, get_online_peers, get_online_peers_data
 from .metrics import get_prometheus_metrics
 
 logger = hivemind.get_logger(__name__)
@@ -31,7 +31,6 @@ class StateUpdaterThread(threading.Thread):
         start_time = time.perf_counter()
         # try:
         #     # state_dict = fetch_health_state(self.dht)
-        #     # print("state_dict", state_dict)
         #     state_dict = fetch_health_state2(self.dht)
 
         #     self.state_json = simplejson.dumps(state_dict, indent=2, ignore_nan=True, default=json_default)
@@ -47,7 +46,6 @@ class StateUpdaterThread(threading.Thread):
     #         start_time = time.perf_counter()
     #         try:
     #             # state_dict = fetch_health_state(self.dht)
-    #             # print("state_dict", state_dict)
     #             state_dict = fetch_health_state2(self.dht)
 
     #             self.state_json = simplejson.dumps(state_dict, indent=2, ignore_nan=True, default=json_default)
@@ -112,6 +110,18 @@ def get_peer_ids_list():
         # updater.start()
         # updater.ready.wait()
         state_dict = get_online_peers(dht)
+        return state_dict
+    except Exception as error:
+        logger.error("Failed to get peers list:", error)
+        return None
+    
+def get_peers_data_list():
+    try:
+        dht = hivemind.DHT(initial_peers=INITIAL_PEERS, client_mode=True, num_workers=32, start=True)
+        # updater = StateUpdaterThread(dht, daemon=True)
+        # updater.start()
+        # updater.ready.wait()
+        state_dict = get_online_peers_data(dht)
         return state_dict
     except Exception as error:
         logger.error("Failed to get peers list:", error)

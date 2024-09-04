@@ -6,6 +6,7 @@ run run_update_network_config before run_server
 python -m petals_tensor.cli.run_server petals-team/StableBeluga2 --public_ip [ip] --port [port] --tcp_port [tcp_port]
 python -m petals_tensor.cli.run_server bigscience/bloom-560m --public_ip [ip] --port [port] --tcp_port [tcp_port]
 
+python -m petals_tensor.cli.run_server bigscience/bloom-560m --num_blocks 3
 """
 import os
 import argparse
@@ -22,7 +23,7 @@ from humanfriendly import parse_size
 from petals_tensor.constants import DTYPE_MAP, PUBLIC_INITIAL_PEERS
 from petals_tensor.server.server import Server
 from petals_tensor.substrate import config as substrate_config
-from petals_tensor.substrate.chain_functions import get_balance, get_min_stake_balance, get_model_accounts, get_model_data, get_model_path_id
+from petals_tensor.substrate.chain_functions import get_balance, get_epoch_length, get_max_model_peers, get_max_models, get_min_model_peers, get_min_required_model_consensus_submit_epochs, get_min_required_peer_consensus_inclusion_epochs, get_min_required_peer_consensus_submit_epochs, get_min_stake_balance, get_model_accounts, get_model_activated, get_model_data, get_model_path_id, get_tx_rate_limit
 from petals_tensor.utils.convert_block import QuantType
 from petals_tensor.utils.version import validate_version
 
@@ -69,7 +70,7 @@ def main():
                              'This is also called by the blockchains offchain-worker alongside your port to ensure your server is returning valid data.'
                              'Default: server announces IPv4/IPv6 addresses of your network interfaces')
 
-    parser.add_argument('--tcp_port', type=str, required=True,
+    parser.add_argument('--tcp_port', type=str, required=False,
                         help='Port this server listens to for API calls from the blockchains offchain-workers. '
                              'This is the port the blockchain will call to ensure your server is returning valid data.')
 
@@ -205,7 +206,40 @@ def main():
 
     if pickles_exist:
         logger.info("Ensuring pickles are deleted")
-        time.sleep(2)
+        time.sleep(3)
+
+    epoch_length = get_epoch_length(substrate_config.SubstrateConfig.interface)
+    min_required_model_consensus_submit_epochs = get_min_required_model_consensus_submit_epochs(substrate_config.SubstrateConfig.interface)
+    min_model_peers = get_min_model_peers(substrate_config.SubstrateConfig.interface)
+    max_model_peers = get_max_model_peers(substrate_config.SubstrateConfig.interface)
+    max_models = get_max_models(substrate_config.SubstrateConfig.interface)
+    min_stake_balance = get_min_stake_balance(substrate_config.SubstrateConfig.interface)
+    tx_rate_limit = get_tx_rate_limit(substrate_config.SubstrateConfig.interface)
+
+    """
+    Initialize Pickle
+    """
+    network_config = substrate_config.NetworkConfig()
+
+    network_config.initialize(
+        int(str(epoch_length)),
+        int(str(min_required_model_consensus_submit_epochs)),
+        0,
+        0,
+        int(str(min_model_peers)),
+        int(str(max_model_peers)),
+        int(str(max_models)),
+        int(str(tx_rate_limit)),
+        int(str(min_stake_balance)),
+        0,
+        int(str(0)),
+        0
+    )
+
+    """
+    Save Pickle
+    """
+    substrate_config.save_network_config(network_config)
 
     # fmt:on
     args = vars(parser.parse_args())
@@ -222,67 +256,9 @@ def main():
     print("tcp_port", tcp_port)
 
     if ignore_chain == False:
-        model_id = get_model_path_id(
-            substrate_config.SubstrateConfig.interface,
-            args["converted_model_name_or_path"]
-        )
-
-        print("model_id ->", model_id)
-
-        assert model_id != None and model_id >= 1, "Model path is invalid, try again with correct model path"
-
-        model_data = get_model_data(
-            substrate_config.SubstrateConfig.interface,
-            model_id
-        )
-
-        logger.info("Saving model data from blockchain to substrate config")
-        logger.info("Model ID          ->   %s" % str(model_id))
-        logger.info("Model Path        ->   %s" % args["converted_model_name_or_path"])
-        logger.info("Model Initialized ->   %s" % str(model_data["initialized"]))
-
-        # print("model_id", type(model_id))
-        # print("model_data[]", type(model_data["initialized"]))
-        """
-        Initialize Pickle
-        """
-        model_config = substrate_config.ModelDataConfig()
-        model_config.initialize(
-            int(str(model_id)),
-            args["converted_model_name_or_path"],
-            int(str(model_data["initialized"]))
-        )
-
-        """
-        Save Pickle
-        """
-        substrate_config.save_model_config(model_config)
-
-        logger.info("Model ID Saved          ->   %s" % substrate_config.ModelDataConfig().id)
-        logger.info("Model Path Saved        ->   %s" % substrate_config.ModelDataConfig().path)
-        logger.info("Model Initialized Saved ->   %s" % substrate_config.ModelDataConfig().initialized)
-
-        """
-        Preliminary localized checks
-         - Ensure account has enough balance to stake towards model
-        These same parameters will be checked both here and by other peers in future versions of Petals Tensor
-        """
-        model_peer_accounts = get_model_accounts(
-            substrate_config.SubstrateConfig.interface,
-            model_id,
-        )
-
-        account_id = substrate_config.SubstrateConfig.account_id
-
-        logger.info('Your account ID is %s ' % account_id)
-
-        exists = False
-        for i in model_peer_accounts:
-            if account_id in i[0]:
-                exists = True
-                break
-
-        assert exists == False, "account_id already stored on blockchain for this model ID. If this is a mistake remove the `model_validator_config` pickle file."
+        activated = get_model_activated(substrate_config.SubstrateConfig.interface, args["converted_model_name_or_path"])
+        print("activated ->", activated)
+        model_config = substrate_config.SubnetDataConfig()
 
         balance = get_balance(
             substrate_config.SubstrateConfig.interface,
@@ -290,6 +266,99 @@ def main():
         )
 
         logger.info('Your balance is %s (%s)' % (balance, float(balance / 1e18)))
+
+        """ 
+        If model is already activated:
+            Join the subnet
+        Else:
+            Run server and wait for voting to complete
+        """
+        if activated == True:
+            model_id = get_model_path_id(
+                substrate_config.SubstrateConfig.interface,
+                args["converted_model_name_or_path"]
+            )
+
+            print("model_id ->", model_id)
+
+            assert model_id != None and model_id >= 1, "Model path is invalid, try again with correct model path"
+
+            model_data = get_model_data(
+                substrate_config.SubstrateConfig.interface,
+                model_id
+            )
+
+            logger.info("Saving model data from blockchain to substrate config")
+            logger.info("Model ID          ->   %s" % str(model_id))
+            logger.info("Model Path        ->   %s" % args["converted_model_name_or_path"])
+            logger.info("Model Initialized ->   %s" % str(model_data["initialized"]))
+
+            # print("model_id", type(model_id))
+            # print("model_data[]", type(model_data["initialized"]))
+            """
+            Initialize Pickle
+            """
+            model_config.initialize(
+                activated,
+                int(str(model_id)),
+                args["converted_model_name_or_path"],
+                int(str(model_data["min_nodes"])),
+                int(str(model_data["target_nodes"])),
+                int(str(model_data["memory_mb"])),
+                int(str(model_data["initialized"]))
+            )
+
+            """
+            Save Pickle
+            """
+            substrate_config.save_subnet_config(model_config)
+
+            logger.info("Model ID Saved          ->   %s" % substrate_config.SubnetDataConfig().id)
+            logger.info("Model Path Saved        ->   %s" % substrate_config.SubnetDataConfig().path)
+            logger.info("Model Initialized Saved ->   %s" % substrate_config.SubnetDataConfig().initialized)
+
+            """
+            Preliminary localized checks
+            - Ensure account has enough balance to stake towards model
+            These same parameters will be checked both here and by other peers in future versions of Petals Tensor
+            """
+            model_peer_accounts = get_model_accounts(
+                substrate_config.SubstrateConfig.interface,
+                model_id,
+            )
+
+            account_id = substrate_config.SubstrateConfig.account_id
+
+            logger.info('Your account ID is %s ' % account_id)
+
+            exists = False
+            for i in model_peer_accounts:
+                if account_id in i[0]:
+                    exists = True
+                    break
+
+            assert exists == False, "account_id already stored on blockchain for this model ID. If this is a mistake remove the `model_validator_config` pickle file."
+
+        else:
+            """
+            Initialize Pickle
+            """
+            logger.info("Subnet not initialized yet, skipping initialization and waiting for voting to complete")
+            model_config.initialize(
+                False,
+                int(str(0)),
+                args["converted_model_name_or_path"],
+                0,
+                0,
+                0,
+                0
+            )
+
+            """
+            Save Pickle
+            """
+            substrate_config.save_subnet_config(model_config)
+
 
         min_stake_balance = get_min_stake_balance(substrate_config.SubstrateConfig.interface)
 
@@ -374,8 +443,8 @@ def main():
 
     model_validator_config.initialize(
         ipv4_peer_id,
-        tcp_public_ip,
-        tcp_port,
+        0,
+        0,
         0
     )
 

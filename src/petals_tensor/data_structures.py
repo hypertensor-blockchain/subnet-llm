@@ -152,3 +152,23 @@ class InferenceMetadata:
     prefix_length: int
     cache_handles: Tuple[Handle, ...]
     active_adapter: Optional[str]
+
+
+@dataclasses.dataclass
+class NodeStatus:
+    """
+    Blockchain status
+    """
+    peer_id: PeerID
+
+    @property
+    def is_included(self) -> bool:
+        return True
+
+    @property
+    def is_submittable(self) -> bool:
+        return True
+
+    @property
+    def is_accountant(self) -> bool:
+        return True

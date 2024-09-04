@@ -1,7 +1,7 @@
 """
 This should be ran after your node has successfully began hosting the machine learning models
 
-Before running add_model_peer() make sure your peer_id is shown when running `health.py`
+Before running add_subnet_node() make sure your peer_id is shown when running `health.py`
 
 It's important other peers are submitting your peer_id during peer consensus so the node 
 doesn't increment your peer_id out of consensus. Read documentation for more information
@@ -30,7 +30,7 @@ def main():
 
   args = parser.parse_args()
 
-  model_config = substrate_config.load_model_config()
+  model_config = substrate_config.load_subnet_config()
   model_id = model_config.id
 
   balance = get_balance(
@@ -44,7 +44,7 @@ def main():
 
   in_consensus_steps = substrate_utils.is_in_consensus_steps(
     block_number,
-    substrate_config.NetworkConfig.consensus_blocks_interval, 
+    substrate_config.NetworkConfig.epoch_length, 
   )
 
   assert in_consensus_steps == False, "Cannot add to stake while blockchain is running consensus steps. Wait 2 blocks"
