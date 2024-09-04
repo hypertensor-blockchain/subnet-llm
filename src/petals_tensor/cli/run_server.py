@@ -23,7 +23,7 @@ from humanfriendly import parse_size
 from petals_tensor.constants import DTYPE_MAP, PUBLIC_INITIAL_PEERS
 from petals_tensor.server.server import Server
 from petals_tensor.substrate import config as substrate_config
-from petals_tensor.substrate.chain_functions import get_balance, get_epoch_length, get_max_model_consensus_epochs, get_max_model_peers, get_max_models, get_maximum_outlier_delta_percent, get_min_model_peers, get_min_required_model_consensus_submit_epochs, get_min_required_peer_consensus_inclusion_epochs, get_min_required_peer_consensus_submit_epochs, get_min_stake_balance, get_model_accounts, get_model_activated, get_model_data, get_model_path_id, get_remove_model_peer_epoch_percentage, get_tx_rate_limit
+from petals_tensor.substrate.chain_functions import get_balance, get_epoch_length, get_max_model_peers, get_max_models, get_min_model_peers, get_min_required_model_consensus_submit_epochs, get_min_required_peer_consensus_inclusion_epochs, get_min_required_peer_consensus_submit_epochs, get_min_stake_balance, get_model_accounts, get_model_activated, get_model_data, get_model_path_id, get_tx_rate_limit
 from petals_tensor.utils.convert_block import QuantType
 from petals_tensor.utils.version import validate_version
 
@@ -210,16 +210,11 @@ def main():
 
     epoch_length = get_epoch_length(substrate_config.SubstrateConfig.interface)
     min_required_model_consensus_submit_epochs = get_min_required_model_consensus_submit_epochs(substrate_config.SubstrateConfig.interface)
-    min_required_peer_consensus_submit_epochs = get_min_required_peer_consensus_submit_epochs(substrate_config.SubstrateConfig.interface)
-    min_required_peer_consensus_inclusion_epochs = get_min_required_peer_consensus_inclusion_epochs(substrate_config.SubstrateConfig.interface)
     min_model_peers = get_min_model_peers(substrate_config.SubstrateConfig.interface)
     max_model_peers = get_max_model_peers(substrate_config.SubstrateConfig.interface)
     max_models = get_max_models(substrate_config.SubstrateConfig.interface)
     min_stake_balance = get_min_stake_balance(substrate_config.SubstrateConfig.interface)
     tx_rate_limit = get_tx_rate_limit(substrate_config.SubstrateConfig.interface)
-    max_zero_consensus_epochs = get_max_model_consensus_epochs(substrate_config.SubstrateConfig.interface)
-    maximum_outlier_delta_percent = get_maximum_outlier_delta_percent(substrate_config.SubstrateConfig.interface)
-    remove_model_peer_epoch_percentage = get_remove_model_peer_epoch_percentage(substrate_config.SubstrateConfig.interface)
 
     """
     Initialize Pickle
@@ -229,16 +224,16 @@ def main():
     network_config.initialize(
         int(str(epoch_length)),
         int(str(min_required_model_consensus_submit_epochs)),
-        int(str(min_required_peer_consensus_submit_epochs)),
-        int(str(min_required_peer_consensus_inclusion_epochs)),
+        0,
+        0,
         int(str(min_model_peers)),
         int(str(max_model_peers)),
         int(str(max_models)),
         int(str(tx_rate_limit)),
         int(str(min_stake_balance)),
-        float(int(str(maximum_outlier_delta_percent)) / 100),
-        int(str(max_zero_consensus_epochs)),
-        float(int(str(remove_model_peer_epoch_percentage)) / 10000)
+        0,
+        int(str(0)),
+        0
     )
 
     """

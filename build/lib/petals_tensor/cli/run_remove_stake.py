@@ -38,11 +38,6 @@ def main():
   """
   Ensure amount being removed won't go below minimum required stake balance towards a model
   """
-  # model_stake_balance = get_model_stake_balance(
-  #   substrate_config.SubstrateConfig.interface,
-  #   int(model_id),
-  #   str(substrate_config.SubstrateConfig.account_id)
-  # )
 
   logger.info("Your Account ID is %s" % substrate_config.SubstrateConfig.account_id)
 

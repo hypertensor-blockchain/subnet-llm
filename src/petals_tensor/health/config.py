@@ -10,7 +10,7 @@ INITIAL_PEERS = PUBLIC_INITIAL_PEERS
 #     num_blocks=80,
 # )
 MODEL = ModelInfo(
-    dht_prefix="bigscience/bloom-560m-petals",
+    dht_prefix="bigscience/bloom-560m",
     repository="https://huggingface.co/bigscience/bloom-560m",
     num_blocks=24,
 )

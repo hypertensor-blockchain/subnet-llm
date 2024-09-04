@@ -71,8 +71,6 @@ def attest(
   Note: It's important before calling this to ensure the entrinsic will be successful.
         If the function reverts, the extrinsic is Pays::Yes
   """
-  print("submitting consensus data...")
-
   # compose call
   call = substrate.compose_call(
     call_module='Network',
@@ -85,10 +83,6 @@ def attest(
   # create signed extrinsic
   extrinsic = substrate.create_signed_extrinsic(call=call, keypair=keypair)
 
-  """
-  submit extrinsic (this is gasless unless it reverts)
-  This will retry up to 4 times when except is returned
-  """
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def submit_extrinsic():
     try:
@@ -235,9 +229,6 @@ def remove_subnet(
   # create signed extrinsic
   extrinsic = substrate.create_signed_extrinsic(call=call, keypair=keypair)
 
-  # submit extrinsic (this is gasless unless it reverts)
-  # This will retry up to 4 times when except is returned
-  # 
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def submit_extrinsic():
     try:
@@ -290,10 +281,6 @@ def vote_model_peer_dishonest(
   # create signed extrinsic
   extrinsic = substrate.create_signed_extrinsic(call=call, keypair=keypair)
 
-  """
-  submit extrinsic (this is gasless unless it reverts)
-  This will retry up to 4 times when except is returned
-  """
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def submit_extrinsic():
     try:
@@ -490,9 +477,6 @@ def add_subnet_node(
   # create signed extrinsic
   extrinsic = substrate.create_signed_extrinsic(call=call, keypair=keypair)
 
-  # submit extrinsic (this is gasless unless it reverts)
-  # This will retry up to 4 times when except is returned
-  # 
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def submit_extrinsic():
     try:
@@ -539,9 +523,6 @@ def update_model_peer(
   # create signed extrinsic
   extrinsic = substrate.create_signed_extrinsic(call=call, keypair=keypair)
 
-  # submit extrinsic (this is gasless unless it reverts)
-  # This will retry up to 4 times when except is returned
-  # 
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def submit_extrinsic():
     try:
@@ -583,9 +564,6 @@ def remove_subnet_node(
   # create signed extrinsic
   extrinsic = substrate.create_signed_extrinsic(call=call, keypair=keypair)
 
-  # submit extrinsic (this is gasless unless it reverts)
-  # This will retry up to 4 times when except is returned
-  # 
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def submit_extrinsic():
     try:
@@ -629,9 +607,6 @@ def update_port(
   # create signed extrinsic
   extrinsic = substrate.create_signed_extrinsic(call=call, keypair=keypair)
 
-  # submit extrinsic (this is gasless unless it reverts)
-  # This will retry up to 4 times when except is returned
-  # 
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def submit_extrinsic():
     try:
@@ -675,9 +650,6 @@ def add_to_stake(
   # create signed extrinsic
   extrinsic = substrate.create_signed_extrinsic(call=call, keypair=keypair)
 
-  # submit extrinsic (this is gasless unless it reverts)
-  # This will retry up to 4 times when except is returned
-  # 
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def submit_extrinsic():
     try:
@@ -724,9 +696,6 @@ def remove_stake(
   # create signed extrinsic
   extrinsic = substrate.create_signed_extrinsic(call=call, keypair=keypair)
 
-  # submit extrinsic (this is gasless unless it reverts)
-  # This will retry up to 4 times when except is returned
-  # 
   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
   def submit_extrinsic():
     try:
@@ -961,23 +930,23 @@ def get_tx_rate_limit(substrate: SubstrateInterface):
 
   return make_query()
 
-def get_max_model_consensus_epochs(substrate: SubstrateInterface):
-  """
-  Function to get the maximum number of epochs allowed for model consensus
+# def get_max_model_consensus_epochs(substrate: SubstrateInterface):
+#   """
+#   Function to get the maximum number of epochs allowed for model consensus
 
-  :param SubstrateInterface: substrate interface from blockchain url
-  :returns: max_model_consensus_epochs
-  """
+#   :param SubstrateInterface: substrate interface from blockchain url
+#   :returns: max_model_consensus_epochs
+#   """
 
-  @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
-  def make_query():
-    try:
-      result = substrate.query('Network', 'MaxSubnetConsensusEpochsErrors')
-      return result
-    except SubstrateRequestException as e:
-      print("Failed to get rpc request: {}".format(e))
+#   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
+#   def make_query():
+#     try:
+#       result = substrate.query('Network', 'MaxSubnetConsensusEpochsErrors')
+#       return result
+#     except SubstrateRequestException as e:
+#       print("Failed to get rpc request: {}".format(e))
 
-  return make_query()
+#   return make_query()
 
 def get_min_required_model_consensus_submit_epochs(substrate: SubstrateInterface):
   """
@@ -1138,41 +1107,41 @@ def get_accountants(substrate: SubstrateInterface, subnet_id: int):
 
 #   return make_query()
 
-def get_maximum_outlier_delta_percent(substrate: SubstrateInterface):
-  """
-  Function to get the maximum outlier delta percent
+# def get_maximum_outlier_delta_percent(substrate: SubstrateInterface):
+#   """
+#   Function to get the maximum outlier delta percent
 
-  :param SubstrateInterface: substrate interface from blockchain url
-  :returns: maximum_outlier_delta_percent
-  """
+#   :param SubstrateInterface: substrate interface from blockchain url
+#   :returns: maximum_outlier_delta_percent
+#   """
 
-  @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
-  def make_query():
-    try:
-      result = substrate.query('Network', 'MaximumOutlierDeltaPercent')
-      return result
-    except SubstrateRequestException as e:
-      print("Failed to get rpc request: {}".format(e))
+#   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
+#   def make_query():
+#     try:
+#       result = substrate.query('Network', 'MaximumOutlierDeltaPercent')
+#       return result
+#     except SubstrateRequestException as e:
+#       print("Failed to get rpc request: {}".format(e))
 
-  return make_query()
+#   return make_query()
 
-def get_remove_model_peer_epoch_percentage(substrate: SubstrateInterface):
-  """
-  Function to get the remove model peer epoch percentage
+# def get_remove_model_peer_epoch_percentage(substrate: SubstrateInterface):
+#   """
+#   Function to get the remove model peer epoch percentage
 
-  :param SubstrateInterface: substrate interface from blockchain url
-  :returns: remove_model_peer_epoch_percentage
-  """
+#   :param SubstrateInterface: substrate interface from blockchain url
+#   :returns: remove_model_peer_epoch_percentage
+#   """
 
-  @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
-  def make_query():
-    try:
-      result = substrate.query('Network', 'RemoveSubnetNodeEpochPercentage')
-      return result
-    except SubstrateRequestException as e:
-      print("Failed to get rpc request: {}".format(e))
+#   @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
+#   def make_query():
+#     try:
+#       result = substrate.query('Network', 'RemoveSubnetNodeEpochPercentage')
+#       return result
+#     except SubstrateRequestException as e:
+#       print("Failed to get rpc request: {}".format(e))
 
-  return make_query()
+#   return make_query()
 
 def get_model_activated(substrate: SubstrateInterface, path: str):
   """
@@ -1254,3 +1223,185 @@ def get_rewards_submission(
 
   return make_query()
 
+
+"""
+Subnet Democracy
+"""
+def propose(
+  substrate: SubstrateInterface,
+  keypair: Keypair,
+  subnet_data,
+  subnet_nodes,
+  proposal_type: str
+):
+  """
+  Remove stake balance towards specified model
+
+  Amount must be less than allowed amount that won't allow stake balance to be lower than
+  the required minimum balance
+
+  :param substrate: interface to blockchain
+  :param keypair: keypair of extrinsic caller. Must be a peer in the model
+  :param stake_to_be_removed: stake to be removed from model
+  """
+
+  # compose call
+  call = substrate.compose_call(
+    call_module='SubnetDemocracy',
+    call_function='propose',
+    call_params={
+      'subnet_data': subnet_data,
+      'subnet_nodes': subnet_nodes,
+      'proposal_type': proposal_type,    
+    }
+  )
+
+  # create signed extrinsic
+  extrinsic = substrate.create_signed_extrinsic(call=call, keypair=keypair)
+
+  # submit extrinsic (this is gasless unless it reverts)
+  # This will retry up to 4 times when except is returned
+  # 
+  @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
+  def submit_extrinsic():
+    try:
+      receipt = substrate.submit_extrinsic(extrinsic, wait_for_inclusion=True)
+      if receipt.is_success:
+        print('✅ Success, triggered events:')
+        for event in receipt.triggered_events:
+          print(f'* {event.value}')
+      else:
+        print('⚠️ Extrinsic Failed: ', receipt.error_message)
+      return receipt
+    except SubstrateRequestException as e:
+      print("Failed to send: {}".format(e))
+
+  return submit_extrinsic()
+
+def cast_vote(
+  substrate: SubstrateInterface,
+  keypair: Keypair,
+  proposal_index: int,
+  vote_amount: int,
+  vote: int
+):
+  """
+  Remove stake balance towards specified model
+
+  Amount must be less than allowed amount that won't allow stake balance to be lower than
+  the required minimum balance
+
+  :param substrate: interface to blockchain
+  :param keypair: keypair of extrinsic caller. Must be a peer in the model
+  :param stake_to_be_removed: stake to be removed from model
+  """
+  # compose call
+  call = substrate.compose_call(
+    call_module='SubnetDemocracy',
+    call_function='cast_vote',
+    call_params={
+      'proposal_index': proposal_index,
+      'vote_amount': vote_amount,
+      'vote': vote
+    }
+  )
+
+  # create signed extrinsic
+  extrinsic = substrate.create_signed_extrinsic(call=call, keypair=keypair)
+
+  # submit extrinsic (this is gasless unless it reverts)
+  # This will retry up to 4 times when except is returned
+  # 
+  @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
+  def submit_extrinsic():
+    try:
+      receipt = substrate.submit_extrinsic(extrinsic, wait_for_inclusion=True)
+      if receipt.is_success:
+        print('✅ Success, triggered events:')
+        for event in receipt.triggered_events:
+          print(f'* {event.value}')
+      else:
+        print('⚠️ Extrinsic Failed: ', receipt.error_message)
+      return receipt
+    except SubstrateRequestException as e:
+      print("Failed to send: {}".format(e))
+
+  return submit_extrinsic()
+
+def execute_proposal(
+  substrate: SubstrateInterface,
+  keypair: Keypair,
+  proposal_index: int,
+):
+  """
+  Remove stake balance towards specified model
+
+  Amount must be less than allowed amount that won't allow stake balance to be lower than
+  the required minimum balance
+
+  :param substrate: interface to blockchain
+  :param keypair: keypair of extrinsic caller. Must be a peer in the model
+  :param stake_to_be_removed: stake to be removed from model
+  """
+
+  # compose call
+  call = substrate.compose_call(
+    call_module='SubnetDemocracy',
+    call_function='execute',
+    call_params={ 'proposal_index': proposal_index }
+  )
+
+  # create signed extrinsic
+  extrinsic = substrate.create_signed_extrinsic(call=call, keypair=keypair)
+
+  @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
+  def submit_extrinsic():
+    try:
+      receipt = substrate.submit_extrinsic(extrinsic, wait_for_inclusion=True)
+      if receipt.is_success:
+        print('✅ Success, triggered events:')
+        for event in receipt.triggered_events:
+          print(f'* {event.value}')
+      else:
+        print('⚠️ Extrinsic Failed: ', receipt.error_message)
+      return receipt
+    except SubstrateRequestException as e:
+      print("Failed to send: {}".format(e))
+
+  return submit_extrinsic()
+
+def get_subnet_proposal(substrate: SubstrateInterface, proposal_id: int):
+  """
+  Function to get the maximum number of peers allowed to host a model
+
+  :param SubstrateInterface: substrate interface from blockchain url
+  :returns: max_model_peers
+  """
+
+  @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
+  def make_query():
+    try:
+      result = substrate.query('SubnetDemocracy', 'Proposals', [proposal_id])
+      return result
+    except SubstrateRequestException as e:
+      print("Failed to get rpc request: {}".format(e))
+
+  return make_query()
+
+def get_subnet_proposals_count(substrate: SubstrateInterface):
+  """
+  Function to get the maximum number of peers allowed to host a model
+
+  :param SubstrateInterface: substrate interface from blockchain url
+  :returns: max_model_peers
+  """
+
+  @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(4))
+  def make_query():
+    try:
+      result = substrate.query('SubnetDemocracy', 'PropCount')
+      return result
+    except SubstrateRequestException as e:
+      print("Failed to get rpc request: {}".format(e))
+
+  return make_query()

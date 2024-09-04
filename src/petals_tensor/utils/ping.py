@@ -75,7 +75,6 @@ class PingAggregator:
         self.lock = threading.Lock()
 
     def ping(self, peer_ids: Sequence[hivemind.PeerID], **kwargs) -> None:
-        print("PingAggregator ping")
         """
         Pings multiple peers and updates the smoothed RTTs
         Args:

@@ -557,11 +557,11 @@ if __name__ == "__main__":
     "MinRequiredPeerConsensusInclusionEpochs", 
     subscription_handler=min_required_peer_consensus_inclusion_epochs_subscription_handler
   )
-  result = SubstrateConfig.interface.query(
-    "Network", 
-    "MaximumOutlierDeltaPercent", 
-    subscription_handler=maximum_outlier_delta_percent_subscription_handler
-  )
+  # result = SubstrateConfig.interface.query(
+  #   "Network", 
+  #   "MaximumOutlierDeltaPercent", 
+  #   subscription_handler=maximum_outlier_delta_percent_subscription_handler
+  # )
   result = SubstrateConfig.interface.query(
     "Network", 
     "ConsensusBlocksInterval", 
