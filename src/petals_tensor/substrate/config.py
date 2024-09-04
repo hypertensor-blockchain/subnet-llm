@@ -34,8 +34,8 @@ class SubstrateConfig:
   """
   Fill in the `.env` file in the root directory with your mnemonic phrase
   """
-  url: str = LOCAL_URL  # url to substrate
-  interface: SubstrateInterface = SubstrateInterface(url=LOCAL_URL)
+  url: str = DEV_URL  # url to substrate
+  interface: SubstrateInterface = SubstrateInterface(url=DEV_URL)
   keypair: Keypair = Keypair.create_from_uri(PHRASE)
   account_id: str = Keypair.create_from_uri(PHRASE).ss58_address
 
