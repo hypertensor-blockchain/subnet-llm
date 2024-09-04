@@ -12,10 +12,7 @@ import torch
 #     "/ip4/159.203.156.48/tcp/31338/p2p/QmQGTqmM7NKjV6ggU1ZCap8zWiyKR89RViDXiqehSiCpY5",
 # ] 
 
-PUBLIC_INITIAL_PEERS = [
-    '/ip4/3.15.176.189/tcp/31337/p2p/12D3KooWLAFTzvgw5pD2UgrTY1aNQjqrvNqZPMF3nyLMAMZGYGyw'
-]
-
+PUBLIC_INITIAL_PEERS = ['/ip4/3.15.176.189/tcp/31337/p2p/QmWwLphXevfij7AMDfwrzsiq5cDQWvHigCPndwPWpt2uuR']
 
 # The reachability API is currently used only when connecting to the public swarm
 # REACHABILITY_API_URL = "https://health.petals.dev"

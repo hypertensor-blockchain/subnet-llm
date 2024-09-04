@@ -537,7 +537,7 @@ class MissingBlocksError(RuntimeError):
     def __init__(self, block_indices: Union[int, Sequence[int]]):
         super().__init__(
             f"No servers holding blocks {block_indices} are online. "
-            f"You can check the public swarm's state at https://health.petals.dev "
+            f"You can check the public swarm's state at https://dashboard.hypertensor.org "
             f"If there are not enough servers, please connect your GPU: "
             f"https://github.com/bigscience-workshop/petals#connect-your-gpu-and-increase-petals-capacity "
         )

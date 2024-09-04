@@ -30,7 +30,7 @@ def main():
   )
   args = parser.parse_args()
 
-  # Choose any model available at https://health.petals.dev
+  # Choose any model available at dashboard.hypertensor.org
   model_name = "petals-team/StableBeluga2"  # This one is fine-tuned Llama 2 (70B)
   
   print(model_name)
