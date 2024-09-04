@@ -2,6 +2,7 @@ from petals_tensor.models.bloom.block import WrappedBloomBlock
 from petals_tensor.models.bloom.config import DistributedBloomConfig
 from petals_tensor.models.bloom.model import (
     DistributedBloomForCausalLM,
+    DistributedBloomForCausalLMValidator,
     DistributedBloomForSequenceClassification,
     DistributedBloomModel,
 )
@@ -11,5 +12,6 @@ register_model_classes(
     config=DistributedBloomConfig,
     model=DistributedBloomModel,
     model_for_causal_lm=DistributedBloomForCausalLM,
+    model_for_causal_lm_validator=DistributedBloomForCausalLMValidator,
     model_for_sequence_classification=DistributedBloomForSequenceClassification,
 )

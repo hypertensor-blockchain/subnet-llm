@@ -16,6 +16,7 @@ from petals_tensor.client.from_pretrained import FromPretrainedMixin
 from petals_tensor.client.lm_head import LMHead
 from petals_tensor.client.ptune import PTuneMixin
 from petals_tensor.client.remote_generation import RemoteGenerationMixin, RemotePastKeyValues
+from petals_tensor.validator.remote_generation import RemoteGenerationMixin as RemoteGenerationMixinValidator
 from petals_tensor.client.remote_sequential import RemoteSequential
 from petals_tensor.models.falcon.config import DistributedFalconConfig
 from petals_tensor.utils.auto_config import DefaultRevisionMixin
@@ -134,6 +135,22 @@ class DistributedFalconForCausalLM(DefaultRevisionMixin, FromPretrainedMixin, Re
     def get_output_embeddings(self):
         return self.lm_head
 
+class DistributedFalconForCausalLMValidator(DefaultRevisionMixin, FromPretrainedMixin, RemoteGenerationMixinValidator, FalconForCausalLM):
+    _keys_to_ignore_on_load_missing = DistributedFalconModel._keys_to_ignore_on_load_missing
+    _keys_to_ignore_on_load_unexpected = DistributedFalconModel._keys_to_ignore_on_load_unexpected
+
+    config_class = DistributedFalconConfig
+
+    def __init__(self, config: DistributedFalconConfig):
+        FalconPreTrainedModel.__init__(self, config)
+        self.transformer = DistributedFalconModel(config)
+        self.lm_head = LMHead(config)
+
+        # Initialize weights and apply final processing
+        self.post_init()
+
+    def get_output_embeddings(self):
+        return self.lm_head
 
 class DistributedFalconForSequenceClassification(
     DefaultRevisionMixin, FromPretrainedMixin, FalconForSequenceClassification

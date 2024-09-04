@@ -1,10 +1,12 @@
 from enum import Enum
+import json
 import scalecodec
 from dataclasses import dataclass
 from scalecodec.base import RuntimeConfiguration, ScaleBytes
 from typing import List, Tuple, Dict, Optional, Any, TypedDict, Union
 from scalecodec.type_registry import load_type_registry_preset
 from scalecodec.utils.ss58 import ss58_encode
+from hivemind import PeerID
 
 U16_MAX = 65535
 U64_MAX = 18446744073709551615
@@ -134,7 +136,7 @@ def from_scale_encoding_using_type_string(
 @dataclass
 class ModelPeerData:
   """
-  Dataclass for neuron metadata.
+  Dataclass for model peer metadata.
   """
 
   account_id: str
@@ -222,3 +224,78 @@ class ModelPeerData:
 
       return neuron
 
+###
+
+# Dataclasses for chain data.
+@dataclass
+class AccountantDataParams:
+  """
+  Dataclass for accountant data
+  """
+
+  peer_id: PeerID
+  span_start: int
+  span_end: int
+  accountant_tensor_sum: float
+  tensor_sum: float
+  valid: bool
+
+  @classmethod
+  def fix_decoded_values(cls, accountant_data_decoded: Any) -> "AccountantDataParams":
+    """Fixes the values of the AccountantDataParams object."""
+
+    accountant_data_decoded["peer_id"] = accountant_data_decoded["peer_id"]
+    accountant_data_decoded["span_start"] = accountant_data_decoded["span_start"]
+    accountant_data_decoded["span_end"] = accountant_data_decoded["span_end"]
+    accountant_data_decoded["accountant_tensor_sum"] = accountant_data_decoded["accountant_tensor_sum"]
+    accountant_data_decoded["tensor_sum"] = accountant_data_decoded["tensor_sum"]
+    accountant_data_decoded["valid"] = accountant_data_decoded["valid"]
+
+    return cls(**accountant_data_decoded)
+
+  @classmethod
+  def list_from_vec_u8(cls, vec_u8: List[int]) -> List["AccountantDataParams"]:
+    """Returns a list of AccountantDataParams objects from a ``vec_u8``."""
+    """The data is arbitrary so we don't count on a struct"""
+
+    decoded_list: List[AccountantDataParams] = []
+
+    # Convert arbitrary data to str
+    list_of_ord_values = ''.join(chr(i) for i in vec_u8)
+
+    # Replace ' to " for json
+    list_of_ord_values = list_of_ord_values.replace("\'", "\"")
+
+    json_obj = json.loads(list_of_ord_values)
+
+    for x in json_obj:
+      accountant_data_params = AccountantDataParams(*x)
+      decoded_list.append(accountant_data_params)
+
+    return decoded_list
+
+@dataclass
+class AccountIdList:
+  """
+  Dataclass for AccountId lists
+  """
+  @classmethod
+  def list_from_vec_u8(cls, vec_u8: List[int]) -> List["AccountIdList"]:
+    """Returns a list of AccountIdList objects from a ``vec_u8``."""
+    """The data is arbitrary so we don't count on a struct"""
+
+    decoded_list: List[AccountIdList] = []
+
+    # Convert arbitrary data to str
+    list_of_ord_values = ''.join(chr(i) for i in vec_u8)
+
+    # Replace ' to " for json
+    list_of_ord_values = list_of_ord_values.replace("\'", "\"")
+
+    json_obj = json.loads(list_of_ord_values)
+
+    for x in json_obj:
+      accountant_data_params = AccountIdList(*x)
+      decoded_list.append(accountant_data_params)
+
+    return decoded_list

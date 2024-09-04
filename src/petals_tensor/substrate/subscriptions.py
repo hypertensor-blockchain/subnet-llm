@@ -1,5 +1,5 @@
 import time
-from config import load_model_config, load_model_validator_config, load_network_config, save_network_config, SubstrateConfig, BLOCK_SECS
+from config import load_subnet_config, load_model_validator_config, load_network_config, save_network_config, SubstrateConfig, BLOCK_SECS
 from utils import get_recheck_consensus_block, can_submit_consensus, get_consensus_data, get_eligible_consensus_block, get_blochchain_model_peers_submittable, get_next_eligible_submit_consensus_block, load_last_submit_consensus_block, load_last_unconfirm_consensus_block, load_unconfirm_consensus_count, save_last_submit_consensus_block, save_last_unconfirm_consensus_block, save_unconfirm_consensus_count
 from submit_consensus import eligible_to_submit_consensus_data, eligible_to_unconfirm_consensus_data
 from errors import SubscriptionException
@@ -28,9 +28,9 @@ def block_listener():
     min_required_model_consensus_submit_epochs = network_config.min_required_model_consensus_submit_epochs
     min_required_peer_consensus_submit_epochs = network_config.min_required_peer_consensus_submit_epochs
     min_model_peers = network_config.min_model_peers
-    consensus_blocks_interval = network_config.consensus_blocks_interval
+    epoch_length = network_config.epoch_length
 
-    model_config = load_model_config()
+    model_config = load_subnet_config()
     model_id = model_config.id
     model_initialized = model_config.initialized
 
@@ -44,13 +44,13 @@ def block_listener():
 
     """Get next submission block related to the last submission"""
     next_submit_consensus_block = get_next_eligible_submit_consensus_block(
-      consensus_blocks_interval, 
+      epoch_length, 
       last_submit_consensus_block
     )
 
     """Get next unconfirm block related to the last unconfirm or last model health check"""
     next_unconfirm_consensus_block = get_next_eligible_submit_consensus_block(
-      consensus_blocks_interval, 
+      epoch_length, 
       last_unconfirm_consensus_block
     )
 
@@ -70,7 +70,7 @@ def block_listener():
       """
       next_unconfirm_consensus_block = get_recheck_consensus_block(
         block_number,
-        network_config.consensus_blocks_interval
+        network_config.epoch_length
       )
       if next_unconfirm_consensus_block > block_number:
         delta = next_unconfirm_consensus_block - block_number
@@ -81,7 +81,7 @@ def block_listener():
 
     # The block the model can begin submitting consensus
     peer_eligible_block = get_eligible_consensus_block(
-      network_config.consensus_blocks_interval, 
+      network_config.epoch_length, 
       peer_initialized, 
       min_required_peer_consensus_submit_epochs
     )
@@ -100,7 +100,7 @@ def block_listener():
 
     # The block the model can begin submitting consensus
     model_eligible_block = get_eligible_consensus_block(
-      network_config.consensus_blocks_interval, 
+      network_config.epoch_length, 
       model_initialized, 
       min_required_model_consensus_submit_epochs
     )
@@ -118,7 +118,7 @@ def block_listener():
     # Are we in the blocks available for consensus submission?
     _can_submit_consensus = can_submit_consensus(
       block_number,
-      network_config.consensus_blocks_interval, 
+      network_config.epoch_length, 
     )
 
     if _can_submit_consensus == True and is_model_consensus_eligible == True:
@@ -128,7 +128,7 @@ def block_listener():
           model_id,
           model_initialized,
           peer_initialized,
-          consensus_blocks_interval,
+          epoch_length,
           next_submit_consensus_block,
           next_unconfirm_consensus_block,
           min_model_peers,
@@ -147,7 +147,7 @@ def handle_consensus(
   model_id: int,
   model_initialized: int,
   peer_initialized: int,
-  consensus_blocks_interval: int,
+  epoch_length: int,
   next_submit_consensus_block: int,
   next_unconfirm_consensus_block: int,
   min_model_peers: int,
@@ -207,7 +207,7 @@ def handle_consensus(
           peer_initialized,
           model_validator_config.account_id,
           min_required_model_consensus_submit_epochs,
-          consensus_blocks_interval,
+          epoch_length,
           min_required_peer_consensus_submit_epochs,
         )
       else:
@@ -220,7 +220,7 @@ def handle_consensus(
         peer_initialized,
         model_validator_config.account_id,
         min_required_model_consensus_submit_epochs,
-        consensus_blocks_interval,
+        epoch_length,
         min_required_peer_consensus_submit_epochs
       )
     elif can_submit_or_unconfirm:
@@ -241,7 +241,7 @@ def handle_consensus(
           peer_initialized,
           model_validator_config.account_id,
           min_required_model_consensus_submit_epochs,
-          consensus_blocks_interval,
+          epoch_length,
           min_required_peer_consensus_submit_epochs,
           consensus_data
         )
@@ -253,7 +253,7 @@ def handle_consensus(
           peer_initialized,
           model_validator_config.account_id,
           min_required_model_consensus_submit_epochs,
-          consensus_blocks_interval,
+          epoch_length,
           min_required_peer_consensus_submit_epochs,
           consensus_data
         )
@@ -267,7 +267,7 @@ def handle_submit_consensus(
   peer_initalized: int,
   account_id: str,
   min_required_model_consensus_submit_epochs: int,
-  consensus_blocks_interval: int,
+  epoch_length: int,
   min_required_peer_consensus_submit_epochs: int,
   consensus_data: Optional[Dict] = None
 ):
@@ -287,7 +287,7 @@ def handle_submit_consensus(
     model_initialized,
     peer_initalized,
     min_required_model_consensus_submit_epochs,
-    consensus_blocks_interval,
+    epoch_length,
     min_required_peer_consensus_submit_epochs,
   )
 
@@ -331,7 +331,7 @@ def handle_unconfirm_consensus(
   peer_initialized: int,
   account_id: str,
   min_required_model_consensus_submit_epochs: int,
-  consensus_blocks_interval: int,
+  epoch_length: int,
   min_required_peer_consensus_submit_epochs: int,
   consensus_data: Optional[Dict] = None
 ):
@@ -343,7 +343,7 @@ def handle_unconfirm_consensus(
     model_initialized,
     peer_initialized,
     min_required_model_consensus_submit_epochs,
-    consensus_blocks_interval,
+    epoch_length,
     min_required_peer_consensus_submit_epochs,
   )
   if eligible_to_unconfirm["eligible"] == True:
@@ -385,12 +385,12 @@ def model_consensus_epoch_unconfirm_count_subscription_handler(obj, update_nr, s
 
     _can_submit_consensus = can_submit_consensus(
       block_number,
-      network_config.consensus_blocks_interval, 
+      network_config.epoch_length, 
     )
 
     last_unconfirm_consensus_block = load_last_unconfirm_consensus_block()
     next_unconfirm_consensus_block = get_next_eligible_submit_consensus_block(
-      network_config.consensus_blocks_interval, 
+      network_config.epoch_length, 
       last_unconfirm_consensus_block
     )
 
@@ -402,7 +402,7 @@ def model_consensus_epoch_unconfirm_count_subscription_handler(obj, update_nr, s
 
     can_unconfirm = block_number > next_unconfirm_consensus_block
     if _can_submit_consensus and can_unconfirm:
-      model_config = load_model_config()
+      model_config = load_subnet_config()
       model_id = model_config.id
       model_initialized = model_config.initialized
 
@@ -416,7 +416,7 @@ def model_consensus_epoch_unconfirm_count_subscription_handler(obj, update_nr, s
       # health becomes healthy for them
       next_unconfirm_consensus_block = get_recheck_consensus_block(
         block_number,
-        network_config.consensus_blocks_interval
+        network_config.epoch_length
       )
       
       if next_unconfirm_consensus_block > block_number:
@@ -431,7 +431,7 @@ def model_consensus_epoch_unconfirm_count_subscription_handler(obj, update_nr, s
           model_validator_config.initialized,
           model_validator_config.account_id,
           min_required_model_consensus_submit_epochs,
-          network_config.consensus_blocks_interval,
+          network_config.epoch_length,
           min_required_peer_consensus_submit_epochs,
         )
       )
@@ -491,7 +491,7 @@ def maximum_outlier_delta_percent_subscription_handler(obj, update_nr, subscript
   
 def consensus_blocks_interval_subscription_handler(obj, update_nr, subscription_id):
   network_config = load_network_config()
-  network_config.consensus_blocks_interval = int(str(obj.value))
+  network_config.epoch_length = int(str(obj.value))
   save_network_config(network_config)
 
 def remove_model_peer_epoch_percentage_subscription_handler(obj, update_nr, subscription_id):
@@ -557,11 +557,11 @@ if __name__ == "__main__":
     "MinRequiredPeerConsensusInclusionEpochs", 
     subscription_handler=min_required_peer_consensus_inclusion_epochs_subscription_handler
   )
-  result = SubstrateConfig.interface.query(
-    "Network", 
-    "MaximumOutlierDeltaPercent", 
-    subscription_handler=maximum_outlier_delta_percent_subscription_handler
-  )
+  # result = SubstrateConfig.interface.query(
+  #   "Network", 
+  #   "MaximumOutlierDeltaPercent", 
+  #   subscription_handler=maximum_outlier_delta_percent_subscription_handler
+  # )
   result = SubstrateConfig.interface.query(
     "Network", 
     "ConsensusBlocksInterval", 

@@ -35,10 +35,7 @@ def fetch_health_state(dht: hivemind.DHT) -> dict:
     if model_index is not None and isinstance(model_index.value, dict):
         official_dht_prefixes = {model.dht_prefix for model in models}
         custom_models = []
-        print("model_index", model_index)
-        print("official_dht_prefixes", official_dht_prefixes)
         for dht_prefix, model in model_index.value.items():
-            print("dht_prefix, model", dht_prefix, model)
             if dht_prefix in official_dht_prefixes:
                 continue
             with suppress(TypeError, ValueError):
